@@ -99,4 +99,33 @@ describe('Worker 路由与错误处理', () => {
     expect(res.headers.get('cache-control')).toBe('no-store');
     expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
   });
+
+  it('线上 Worker 不为 localhost Origin 回 CORS 头', async () => {
+    const { env } = makeEnv();
+    env.APP_ORIGIN = 'https://todo.example.com';
+
+    const res = await worker.fetch(
+      new Request('https://tada-relay.example.workers.dev/api/health', {
+        headers: { origin: 'http://localhost:5173' },
+      }),
+      env,
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
+  it('APP_ORIGIN 匹配时回对应的 CORS 头', async () => {
+    const { env } = makeEnv();
+    env.APP_ORIGIN = 'https://todo.example.com';
+
+    const res = await worker.fetch(
+      new Request('https://tada-relay.example.workers.dev/api/health', {
+        headers: { origin: 'https://todo.example.com' },
+      }),
+      env,
+    );
+
+    expect(res.headers.get('access-control-allow-origin')).toBe('https://todo.example.com');
+  });
 });

@@ -6,6 +6,7 @@ import {
   type SyntheticEvent,
 } from 'react';
 import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core';
+import { LIMITS } from '@tada/shared';
 import type { ListRow, TaskRow as Row } from '../db/schema';
 import { useToday } from '../hooks/useToday';
 import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
@@ -39,6 +40,7 @@ export interface TaskRowProps {
   style?: CSSProperties;
   onToggle: (task: Row) => void;
   onOpen: (task: Row) => void;
+  onRename: (task: Row, title: string) => void;
   onMove: (task: Row, listId: string) => void;
   onDelete: (task: Row) => void;
 }
@@ -58,12 +60,22 @@ export function TaskRow({
   style,
   onToggle,
   onOpen,
+  onRename,
   onMove,
   onDelete,
 }: TaskRowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [draftTitle, setDraftTitle] = useState(task.title);
+  const cancelTitleRef = useRef(false);
+  const finishTitleRef = useRef(false);
   const rootRef = useRef<HTMLLIElement | null>(null);
   const today = useToday();
+
+  // 外部同步更新标题时，如果用户没在编辑就同步草稿
+  useEffect(() => {
+    if (!editingTitle) setDraftTitle(task.title);
+  }, [task.title, editingTitle]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -76,6 +88,22 @@ export function TaskRow({
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [menuOpen]);
+
+  const finishTitle = (save: boolean) => {
+    if (!editingTitle || finishTitleRef.current) return;
+    finishTitleRef.current = true;
+    setEditingTitle(false);
+    if (!save) {
+      setDraftTitle(task.title);
+      return;
+    }
+    const value = draftTitle.trim();
+    if (!value) {
+      setDraftTitle(task.title);
+      return;
+    }
+    if (value !== task.title) onRename(task, value);
+  };
 
   const overdue = isOverdue(task.dueAt, today);
   // 子任务跟随父任务换列表，不提供单独移动入口
@@ -122,9 +150,40 @@ export function TaskRow({
       </label>
 
       <div className="task-body" onPointerDown={onRowPointerDown}>
-        <button type="button" className="task-title" onClick={() => onOpen(task)}>
-          {task.title}
-        </button>
+        {editingTitle ? (
+          <input
+            className="task-title-input"
+            value={draftTitle}
+            autoFocus
+            maxLength={LIMITS.taskTitle}
+            aria-label="任务标题"
+            onChange={(event) => setDraftTitle(event.target.value)}
+            onPointerDown={(event) => event.stopPropagation()}
+            onBlur={() => {
+              if (cancelTitleRef.current) {
+                cancelTitleRef.current = false;
+                return;
+              }
+              finishTitle(true);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                finishTitle(true);
+              } else if (event.key === 'Escape') {
+                event.preventDefault();
+                cancelTitleRef.current = true;
+                finishTitleRef.current = true;
+                setDraftTitle(task.title);
+                setEditingTitle(false);
+              }
+            }}
+          />
+        ) : (
+          <button type="button" className="task-title" onClick={() => onOpen(task)}>
+            {task.title}
+          </button>
+        )}
         <div className="task-meta">
           {parentName ? (
             <span className="parent-tag" title={`所属父任务：${parentName}`}>
@@ -168,6 +227,20 @@ export function TaskRow({
 
         {menuOpen ? (
           <div className="task-menu" role="menu">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenuOpen(false);
+                cancelTitleRef.current = false;
+                finishTitleRef.current = false;
+                setDraftTitle(task.title);
+                setEditingTitle(true);
+              }}
+            >
+              重命名
+            </button>
+            <div className="menu-divider" />
             {moveTargets.length > 0 ? (
               <>
                 <div className="menu-label">移动到</div>

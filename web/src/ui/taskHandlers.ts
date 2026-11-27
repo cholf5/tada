@@ -5,6 +5,7 @@ import type { AppActions } from '../state/actions';
 export interface TaskHandlers {
   onToggle(task: TaskRow): void;
   onOpen(task: TaskRow): void;
+  onRename(task: TaskRow, title: string): void;
   onMove(task: TaskRow, listId: string): void;
   onDelete(task: TaskRow): void;
 }
@@ -45,6 +46,11 @@ export function makeTaskHandlers(
       void actions.setTaskDone(task.id, task.done === 0);
     },
     onOpen,
+    onRename: (task, title) => {
+      const value = title.trim();
+      if (!value || value === task.title) return;
+      void actions.updateTask(task.id, { title: value });
+    },
     onMove: (task, listId) => {
       void actions.moveTask(task.id, listId);
     },

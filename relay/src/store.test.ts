@@ -1,89 +1,17 @@
-import { readFileSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
-import { fileURLToPath, type URL as NodeURL } from 'node:url';
 import { formatHlc } from '@tada/shared';
 import { describe, expect, it } from 'vitest';
 import {
+  DEVICE_TOUCH_INTERVAL_MS,
   applyPush,
   consumePairingCode,
   findDeviceByTokenHash,
   pullPage,
   sha256Hex,
+  touchDeviceIfStale,
   type D1Like,
-  type D1PreparedStatementLike,
-  type D1RunResult,
   type IncomingChange,
 } from './store';
-
-/* ------------------------------------------------------------------ *
- * D1Like 的 node:sqlite 适配器
- *
- * 用 Node 25 内置的 DatabaseSync（不是 better-sqlite3），并加载真实的
- * schema.sql —— 这里的 SQL 与线上 D1 执行的是同一份。
- * ------------------------------------------------------------------ */
-
-type BindValue = string | number | bigint | null | Uint8Array;
-
-class SqliteStatement implements D1PreparedStatementLike {
-  constructor(
-    private readonly db: DatabaseSync,
-    private readonly sql: string,
-    private readonly params: BindValue[] = [],
-  ) {}
-
-  bind(...values: unknown[]): D1PreparedStatementLike {
-    return new SqliteStatement(this.db, this.sql, values as BindValue[]);
-  }
-
-  async all<T = unknown>(): Promise<{ results: T[]; meta: Record<string, never> }> {
-    const results = this.db.prepare(this.sql).all(...this.params) as T[];
-    return { results, meta: {} };
-  }
-
-  async first<T = unknown>(): Promise<T | null> {
-    const row = this.db.prepare(this.sql).get(...this.params) as T | undefined;
-    return row ?? null;
-  }
-
-  async run(): Promise<{ meta: { changes: number } }> {
-    const info = this.db.prepare(this.sql).run(...this.params);
-    return { meta: { changes: Number(info.changes) } };
-  }
-}
-
-/** 模拟 D1 batch：整批在一个事务里，任一语句失败则整体回滚。 */
-class SqliteD1 implements D1Like {
-  constructor(readonly db: DatabaseSync) {}
-
-  prepare(query: string): D1PreparedStatementLike {
-    return new SqliteStatement(this.db, query);
-  }
-
-  async batch(statements: D1PreparedStatementLike[]): Promise<D1RunResult[]> {
-    this.db.exec('BEGIN');
-    try {
-      const results: D1RunResult[] = [];
-      for (const statement of statements) {
-        results.push(await statement.run());
-      }
-      this.db.exec('COMMIT');
-      return results;
-    } catch (error) {
-      this.db.exec('ROLLBACK');
-      throw error;
-    }
-  }
-}
-
-const SCHEMA_PATH = fileURLToPath(
-  new URL('../schema.sql', import.meta.url) as unknown as NodeURL,
-);
-
-function makeDb(): SqliteD1 {
-  const raw = new DatabaseSync(':memory:');
-  raw.exec(readFileSync(SCHEMA_PATH, 'utf8'));
-  return new SqliteD1(raw);
-}
+import { makeDb } from './test/sqlite';
 
 /* ------------------------------------------------------------------ *
  * 工具与测试数据
@@ -558,5 +486,39 @@ describe('配对与鉴权（真实 SQL）', () => {
 
     // 未知 hash 也查不到
     expect(await findDeviceByTokenHash(db, await sha256Hex('nope'))).toBeNull();
+  });
+
+  it('消费配对码时清理过期超过一天的旧码，不影响当前码', async () => {
+    const db = makeDb();
+    // 两天前就过期的旧码
+    await insertCode(db, 'OLDC0DE123', '2026-11-25T00:00:00.000Z');
+    await insertCode(db, 'ABCDEF0123', FUTURE);
+
+    expect(await consumePairingCode(db, 'ABCDEF0123', '设备', NOW)).not.toBeNull();
+
+    expect(await getCode(db, 'OLDC0DE123')).toBeNull();
+    expect((await getCode(db, 'ABCDEF0123'))?.used_at).toBe(NOW);
+  });
+
+  it('last_seen_at 只在超过刷新间隔时更新', async () => {
+    const db = makeDb();
+    await insertCode(db, 'ABCDEF0123', FUTURE);
+    const outcome = await consumePairingCode(db, 'ABCDEF0123', '设备', NOW);
+    if (!outcome) throw new Error('pairing should succeed');
+    const found = await findDeviceByTokenHash(db, await sha256Hex(outcome.token));
+    if (!found) throw new Error('device should exist');
+
+    expect(found.lastSeenAt).toBeNull();
+    expect(await touchDeviceIfStale(db, found.id, NOW)).toBe(true);
+    expect((await getDevice(db, found.id))?.last_seen_at).toBe(NOW);
+
+    // 一分钟后仍在间隔内：不写
+    const soon = new Date(Date.parse(NOW) + 60_000).toISOString();
+    expect(await touchDeviceIfStale(db, found.id, soon)).toBe(false);
+
+    // 超过一小时：刷新
+    const later = new Date(Date.parse(NOW) + DEVICE_TOUCH_INTERVAL_MS + 1).toISOString();
+    expect(await touchDeviceIfStale(db, found.id, later)).toBe(true);
+    expect((await getDevice(db, found.id))?.last_seen_at).toBe(later);
   });
 });

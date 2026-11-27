@@ -184,13 +184,22 @@ export class SyncEngine {
         }
       }
 
-      const summary = await pullAll(db, transport, token, {}, clock);
+      // 刚配对时 lastSeq 已归零；若首次全量 pull 中途失败，重试必须从 0
+      // 重新收集 seenIds，否则前几页的行会被误判为「服务端没有」而重复补推。
+      const pairReseed = ((await getMeta(db, 'pairReseed')) ?? 0) === 1;
+      const summary = await pullAll(
+        db,
+        transport,
+        token,
+        { fromStart: pairReseed },
+        clock,
+      );
       await setMeta(db, 'lastSyncedAt', new Date(this.now()).toISOString());
 
-      // 刚配对：首次全量 pull 已经带回服务端仍存在的行 id。
+      // 首次全量 pull 已经带回服务端仍存在的行 id。
       // 把「本地有、服务端没有」的未删除行补进 outbox，下一轮 push 上传。
       // 服务器完全为空只是这个集合为空的特例，非空服务器同样成立。
-      if (((await getMeta(db, 'pairReseed')) ?? 0) === 1) {
+      if (pairReseed) {
         if ((await requeueMissingLocalRows(db, summary.seenIds)) > 0) this.again = true;
         await setMeta(db, 'pairReseed', 0);
       }

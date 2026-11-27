@@ -40,15 +40,6 @@ export function formatDue(dueAt: string, today: string = todayIso()): string {
   return `${p.month}月${p.day}日`;
 }
 
-/** 已完成列表里展示的完成时间 */
-export function formatDoneAt(iso: string | null): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const p = parts(toIsoDate(date));
-  return p ? `${p.month}月${p.day}日` : '';
-}
-
 export function formatLastSync(iso: string | null): string {
   if (!iso) return '尚未同步';
   const date = new Date(iso);

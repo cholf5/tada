@@ -188,6 +188,12 @@ export interface PairingOutcome {
   token: string;
 }
 
+/** 过期超过一天的配对码在下次配对时顺手清理，避免表无限增长。 */
+const PAIRING_CODE_RETENTION_MS = 24 * 60 * 60 * 1000;
+
+/** 同一设备最多每小时刷新一次 last_seen_at，避免每次同步都产生一次 D1 写入。 */
+export const DEVICE_TOUCH_INTERVAL_MS = 60 * 60 * 1000;
+
 /**
  * 消费一次性配对码并登记设备。
  *
@@ -207,6 +213,9 @@ export async function consumePairingCode(
   const tokenHash = await sha256Hex(token);
   const deviceId = crypto.randomUUID();
   const claimId = crypto.randomUUID();
+  const cleanupCutoff = new Date(
+    Date.parse(now) - PAIRING_CODE_RETENTION_MS,
+  ).toISOString();
 
   const [consumed, inserted] = await db.batch([
     db
@@ -224,6 +233,11 @@ export async function consumePairingCode(
           WHERE code = ?5 AND claim_id = ?6`,
       )
       .bind(deviceId, deviceName, tokenHash, now, code, claimId),
+    // 顺手清理过期一天的码；正在消费的码要么有效，要么刚被上面的 UPDATE 标记，
+    // 不会落进这个删除条件。
+    db
+      .prepare(`DELETE FROM pairing_codes WHERE expires_at < ?1`)
+      .bind(cleanupCutoff),
   ]);
 
   if ((consumed?.meta?.changes ?? 0) !== 1 || (inserted?.meta?.changes ?? 0) !== 1) {
@@ -237,16 +251,53 @@ export async function consumePairingCode(
  * 鉴权
  * ------------------------------------------------------------------ */
 
+export interface DeviceIdentity {
+  id: string;
+  name: string;
+  /** 最近一次通过鉴权的时间；null 表示从未刷新 */
+  lastSeenAt: string | null;
+}
+
 /** 未撤销的设备才能通过 token 查到；revoked_at 非空一律视为不存在。 */
 export async function findDeviceByTokenHash(
   db: D1Like,
   tokenHash: string,
-): Promise<{ id: string; name: string } | null> {
+): Promise<DeviceIdentity | null> {
   const row = await db
-    .prepare(`SELECT id, name FROM devices WHERE token_hash = ?1 AND revoked_at IS NULL`)
+    .prepare(
+      `SELECT id, name, last_seen_at
+         FROM devices
+        WHERE token_hash = ?1 AND revoked_at IS NULL`,
+    )
     .bind(tokenHash)
-    .first<{ id: string; name: string }>();
-  return row ?? null;
+    .first<{ id: string; name: string; last_seen_at: string | null }>();
+  if (!row) return null;
+  return { id: row.id, name: row.name, lastSeenAt: row.last_seen_at };
+}
+
+/**
+ * 刷新设备最近活跃时间。
+ *
+ * 只在 lastSeenAt 为空或超过 intervalMs 时写库；返回是否真的更新。
+ * 这是纯信息字段，调用方不应因为更新失败而拒绝请求。
+ */
+export async function touchDeviceIfStale(
+  db: D1Like,
+  id: string,
+  now: string,
+  intervalMs: number = DEVICE_TOUCH_INTERVAL_MS,
+): Promise<boolean> {
+  const threshold = new Date(Date.parse(now) - intervalMs).toISOString();
+  const result = await db
+    .prepare(
+      `UPDATE devices
+          SET last_seen_at = ?1
+        WHERE id = ?2
+          AND (last_seen_at IS NULL OR last_seen_at < ?3)`,
+    )
+    .bind(now, id, threshold)
+    .run();
+  return (result.meta?.changes ?? 0) > 0;
 }
 
 /* ------------------------------------------------------------------ *

@@ -4,6 +4,7 @@ import { liveLists, type RepoDeps } from '../db/repo';
 import type { TadaDb, TaskRow } from '../db/schema';
 import { useLive } from '../hooks/useLive';
 import { useSubtaskCounts } from '../hooks/useSubtaskCounts';
+import type { PersistStatus } from '../lib/storage';
 import type { SyncEngine, SyncSnapshot } from '../sync/engine';
 import { useActions, type AppActions } from '../state/actions';
 import type { View } from '../state/view';
@@ -26,6 +27,7 @@ export function Workspace({
   sync,
   connected,
   notice,
+  storageStatus,
   onPair,
   onUnpair,
 }: {
@@ -35,6 +37,7 @@ export function Workspace({
   sync: SyncSnapshot;
   connected: boolean;
   notice: string | null;
+  storageStatus: PersistStatus;
   onPair: (code: string, deviceName: string) => Promise<void>;
   onUnpair: () => void;
 }) {
@@ -172,6 +175,7 @@ export function Workspace({
           sync={sync}
           connected={connected}
           notice={notice}
+          storageStatus={storageStatus}
           onPair={onPair}
           onUnpair={onUnpair}
         />

@@ -46,7 +46,6 @@ export interface MetaValues {
   deviceName: string;
   token: string | null;
   lastSeq: number;
-  seeded: Flag;
   lastSyncedAt: string | null;
   /** 本地 HLC 水位：启动时用来初始化时钟，防止时间回拨 / 重载后写出更旧的 HLC */
   lastHlc: string | null;

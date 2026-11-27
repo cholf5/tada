@@ -42,6 +42,19 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // 把稳定的第三方依赖拆成独立 chunk，避免主 bundle 超过 500 kB 告警
+        manualChunks: {
+          react: ['react', 'react-dom', 'react/jsx-runtime'],
+          dexie: ['dexie'],
+          dnd: ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+          zod: ['zod'],
+        },
+      },
+    },
+  },
   // 开发时 Vite 跑在 5173，/api 转发给 wrangler dev（默认 8787）
   server: {
     proxy: {

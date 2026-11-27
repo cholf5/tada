@@ -186,6 +186,41 @@ describe('pull 合并', () => {
     expect((await db.lists.get(listId))?.name).toBe('本地更新');
     expect(await db.outbox.get(`lists:${listId}`)).toBeDefined();
   });
+
+  it('远端新版本覆盖本地后，清掉已过期的 quarantine 提示', async () => {
+    await applyPullPage(db, [listChange({ hlc: h(1000), name: '坏数据' })]);
+    await db.quarantine.put({
+      key: `lists:${LIST_A}`,
+      entity: 'lists',
+      rowId: LIST_A,
+      hlc: h(1000),
+      reason: 'HTTP 400',
+      quarantinedAt: 1,
+    });
+
+    // 另一台设备修正后推送的新版本
+    await applyPullPage(db, [listChange({ hlc: h(2000), name: '修好了' })]);
+
+    expect((await db.lists.get(LIST_A))?.name).toBe('修好了');
+    expect(await db.quarantine.count()).toBe(0);
+  });
+
+  it('本地版本更新时不清 quarantine，也不覆盖本地', async () => {
+    await applyPullPage(db, [listChange({ hlc: h(3000), name: '本地更新' })]);
+    await db.quarantine.put({
+      key: `lists:${LIST_A}`,
+      entity: 'lists',
+      rowId: LIST_A,
+      hlc: h(3000),
+      reason: 'HTTP 400',
+      quarantinedAt: 1,
+    });
+
+    await applyPullPage(db, [listChange({ hlc: h(2000), name: '远端旧版' })]);
+
+    expect((await db.lists.get(LIST_A))?.name).toBe('本地更新');
+    expect(await db.quarantine.count()).toBe(1);
+  });
 });
 
 describe('pullAll 游标与分页', () => {

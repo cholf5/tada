@@ -4,7 +4,7 @@ import {
   type PullResponse,
   type WireChange,
 } from '@tada/shared';
-import { dropOutboxIfOlder } from '../db/outbox';
+import { dropOutboxIfOlder, dropQuarantineIfOlder } from '../db/outbox';
 import { getMeta, setMeta, type TadaDb, type ListRow, type TaskRow } from '../db/schema';
 import { isNewer } from './lww';
 
@@ -15,6 +15,14 @@ export interface PullTransport {
 export interface PullOptions {
   limit?: number;
   maxPages?: number;
+  /**
+   * 忽略本地 lastSeq，从 0 重新全量拉取。
+   *
+   * 配对后的补推依赖 `seenIds` 是「服务端当前全部行」；如果首次全量 pull
+   * 中途失败，重试时必须从 0 重新收集，而不能从已推进的游标接着拉，
+   * 否则前几页的行会被误认为「服务端没有」而重复上传。
+   */
+  fromStart?: boolean;
 }
 
 export interface PullSummary {
@@ -30,7 +38,7 @@ export interface PullSummary {
 
 /** meta 也必须进事务：applyPullPage 里的 clock.observe 会把 lastHlc 水位落盘 */
 function tables(db: TadaDb) {
-  return [db.lists, db.tasks, db.outbox, db.meta];
+  return [db.lists, db.tasks, db.outbox, db.quarantine, db.meta];
 }
 
 /**
@@ -87,6 +95,7 @@ async function applyListChange(
       remote: 1,
     };
     await db.lists.put(row);
+    await dropQuarantineIfOlder(db, 'lists', change.id, change.hlc);
     return true;
   }
 
@@ -112,6 +121,7 @@ async function applyListChange(
   }
 
   await dropOutboxIfOlder(db, 'lists', change.id, change.hlc);
+  await dropQuarantineIfOlder(db, 'lists', change.id, change.hlc);
   return true;
 }
 
@@ -142,6 +152,7 @@ async function applyTaskChange(
       remote: 1,
     };
     await db.tasks.put(row);
+    await dropQuarantineIfOlder(db, 'tasks', change.id, change.hlc);
     return true;
   }
 
@@ -172,12 +183,16 @@ async function applyTaskChange(
   }
 
   await dropOutboxIfOlder(db, 'tasks', change.id, change.hlc);
+  await dropQuarantineIfOlder(db, 'tasks', change.id, change.hlc);
   return true;
 }
 
 /**
  * 从 lastSeq 开始一直拉到没有更多页。
  * 每拉完一页就落盘游标，中途断网重来不会重复拉取。
+ *
+ * `options.fromStart` 为 true 时忽略 lastSeq、从 0 全量重拉；配对补推需要
+ * 完整的 seenIds，单次拉取中途失败后必须重新收集，不能沿用半截游标。
  */
 export async function pullAll(
   db: TadaDb,
@@ -189,7 +204,7 @@ export async function pullAll(
   const limit = options.limit ?? 500;
   const maxPages = options.maxPages ?? 1000;
 
-  let since = (await getMeta(db, 'lastSeq')) ?? 0;
+  let since = options.fromStart ? 0 : ((await getMeta(db, 'lastSeq')) ?? 0);
   let pages = 0;
   let applied = 0;
   let received = 0;

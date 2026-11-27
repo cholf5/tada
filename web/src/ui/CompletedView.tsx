@@ -52,6 +52,7 @@ export function CompletedView({
               subtaskCounts={subtaskCounts}
               onToggle={handlers.onToggle}
               onOpen={handlers.onOpen}
+              onRename={handlers.onRename}
               onMove={handlers.onMove}
               onDelete={handlers.onDelete}
             />

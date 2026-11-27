@@ -1,6 +1,7 @@
 import { detectDeviceName } from '../lib/device';
 import { hlcDeviceId, newId } from '../lib/ids';
 import { getMeta, setMeta, type TadaDb } from '../db/schema';
+import { openWithTimeout } from './open';
 import { createPersistentClock, type PersistentClock } from '../sync/clock';
 
 export interface BootResult {
@@ -11,6 +12,30 @@ export interface BootResult {
   token: string | null;
 }
 
+const lifecycleBound = new WeakSet<TadaDb>();
+
+/**
+ * 处理其他标签页触发的数据库版本升级。
+ *
+ * - blocked：当前 open 被旧标签页挡住，openWithTimeout 会给出可读错误；
+ * - versionchange：别的标签页要升级 schema，本页必须关闭连接让路，
+ *   然后重新加载，避免继续用一个即将失效的版本。
+ */
+function bindDatabaseLifecycle(db: TadaDb): void {
+  if (lifecycleBound.has(db)) return;
+  lifecycleBound.add(db);
+
+  db.on('blocked', () => {
+    console.warn('[tada] 数据库升级被其他标签页阻塞，请关闭其他 Tada 标签页');
+  });
+
+  db.on('versionchange', () => {
+    console.warn('[tada] 数据库需要升级，正在关闭当前连接');
+    db.close();
+    if (typeof window !== 'undefined') window.location.reload();
+  });
+}
+
 /**
  * 打开本地库并补齐设备身份。
  *
@@ -18,7 +43,8 @@ export interface BootResult {
  * 时钟从 meta.lastHlc 起步，每次产出都异步落盘；拉到的远端 HLC 会回灌。
  */
 export async function bootstrap(db: TadaDb): Promise<BootResult> {
-  await db.open();
+  bindDatabaseLifecycle(db);
+  await openWithTimeout(() => db.open());
 
   let deviceId = await getMeta(db, 'deviceId');
   if (!deviceId) {
@@ -32,9 +58,6 @@ export async function bootstrap(db: TadaDb): Promise<BootResult> {
     await setMeta(db, 'deviceName', deviceName);
   }
 
-  if ((await getMeta(db, 'seeded')) === undefined) {
-    await setMeta(db, 'seeded', 1);
-  }
   if ((await getMeta(db, 'lastSeq')) === undefined) {
     await setMeta(db, 'lastSeq', 0);
   }

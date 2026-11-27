@@ -23,9 +23,25 @@ npm install
 npm run dev:web      # Vite，5173；只跑这个也能用（仅本机）
 npm run dev:relay    # wrangler dev，8787；要测多端同步时再起
 npm run typecheck    # 三个 workspace 一起检查
+npm run test         # 协议、同步引擎、relay SQL 与 HTTP+SQL E2E
 npm run build        # 构建前端到 web/dist
 npm run deploy       # 构建 + 部署 Worker（前端和 API 同源）
 ```
+
+## 本地数据与备份
+
+本地数据在 IndexedDB 里，是唯一一份：
+
+- 启动时会尝试 `navigator.storage.persist()` 申请持久化存储；浏览器可以拒绝。
+- 设置 → 本地数据可以看到持久化状态，并导出 JSON 备份。
+- 备份包含列表和任务（含已删除墓碑），**不包含**配对 token；导入恢复尚未实现，需要手工处理。
+- 清理站点数据、浏览器回收空间或 iOS 长期不用都可能让本地数据消失。开了同步时中继上还有一份；纯本地使用时请定期导出。
+- iOS 主屏安装依靠 `apple-mobile-web-app-capable` 等 meta 以独立窗口打开；更细的真机行为见 `docs/HARDENING.md`。
+
+## 测试与 CI
+
+- relay 的测试用 Node 内置 `node:sqlite` 执行真实 `schema.sql`，其中 `relay/src/e2e.test.ts` 走完整 HTTP 层：配对、两台客户端 push/pull、LWW、墓碑、分页、401。
+- GitHub Actions 配置在 `.github/workflows/ci.yml`，依次执行 typecheck、test、生产依赖审计和 build。
 
 ## 中继
 

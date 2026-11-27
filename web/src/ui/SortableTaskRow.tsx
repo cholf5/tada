@@ -41,6 +41,7 @@ export function SortableTaskRow({
       onRowPointerDown={listeners?.onPointerDown as ((event: SyntheticEvent) => void) | undefined}
       onToggle={handlers.onToggle}
       onOpen={handlers.onOpen}
+      onRename={handlers.onRename}
       onMove={handlers.onMove}
       onDelete={handlers.onDelete}
     />

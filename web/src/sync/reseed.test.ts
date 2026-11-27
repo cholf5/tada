@@ -1,5 +1,4 @@
 import {
-  createHlcClock,
   formatHlc,
   type ListData,
   type PullResponse,
@@ -9,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createList, createTask } from '../db/repo';
 import { getMeta, setMeta, type TadaDb } from '../db/schema';
 import { collectPushBatch, applyPushAccepted } from '../sync/push';
+import { ApiError } from '../sync/api';
 import { SyncEngine } from '../sync/engine';
 import { requeueAllLocalRows } from '../sync/reseed';
 import { disposeDb, makeDb, makeDeps } from '../test/helpers';
@@ -221,6 +221,58 @@ describe('配对到空服务器的自动补推', () => {
     expect(pushedIds.has(missingId)).toBe(true);
     expect(pushedIds.has(keptId)).toBe(false);
     expect(await getMeta(db, 'pairReseed')).toBe(0);
+  });
+
+  it('全量 pull 中途失败后重试从 0 重新收集 seenIds，不重复补推', async () => {
+    const deps = makeDeps(db);
+    const localOnlyId = await seedSyncedList(deps, '仅本地');
+
+    const pullCalls: number[] = [];
+    const pushedIds: string[] = [];
+    let pullCount = 0;
+
+    const transport = {
+      async push(_token: string, changes: WireChange[]) {
+        for (const change of changes) pushedIds.push(change.id);
+        return { lastSeq: 100 };
+      },
+      async pull(_token: string, since: number): Promise<PullResponse> {
+        pullCalls.push(since);
+        pullCount += 1;
+        // 第一页来自服务端，第二页失败；重试时必须再次从 0 开始
+        if (pullCount === 1) {
+          return { changes: [remoteListChange()], nextSince: 5, hasMore: true };
+        }
+        if (pullCount === 2) throw new ApiError('boom', 500);
+        if (pullCount === 3) {
+          return { changes: [remoteListChange()], nextSince: 5, hasMore: false };
+        }
+        return { changes: [], nextSince: 5, hasMore: false };
+      },
+    };
+
+    await setMeta(db, 'token', 'test-token');
+    await setMeta(db, 'pairReseed', 1);
+
+    const engine = new SyncEngine({ db, clock: deps.clock, transport, isOnline: () => true });
+    await engine.syncNow();
+
+    // 第一次拉了两页：0 → 5，然后失败；pairReseed 不能被清掉
+    expect(pullCalls.slice(0, 2)).toEqual([0, 5]);
+    expect(await getMeta(db, 'pairReseed')).toBe(1);
+
+    await engine.syncNow();
+    // 重试时忽略已推进的 lastSeq，从 0 重新全量收集
+    expect(pullCalls[2]).toBe(0);
+
+    await vi.waitFor(async () => {
+      expect(await getMeta(db, 'pairReseed')).toBe(0);
+      expect(await db.outbox.count()).toBe(0);
+    });
+
+    expect(pushedIds).toContain(localOnlyId);
+    expect(pushedIds).not.toContain(OTHER_LIST);
+    engine.stop();
   });
 
   it('reseedLocalData 手动兜底会重新上传所有行', async () => {

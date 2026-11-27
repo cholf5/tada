@@ -16,11 +16,13 @@ import {
 } from './http';
 import type { SeqWireChange } from './pull';
 import {
+  DEVICE_TOUCH_INTERVAL_MS,
   applyPush,
   consumePairingCode,
   findDeviceByTokenHash,
   pullPage,
   sha256Hex,
+  touchDeviceIfStale,
 } from './store';
 
 export interface Env {
@@ -45,7 +47,7 @@ const pairBodySchema = z.object({
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
-    const cors = corsHeaders(req.headers.get('origin') ?? '', env);
+    const cors = corsHeaders(req.headers.get('origin') ?? '', env, url.hostname);
 
     if (req.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: { ...cors, 'cache-control': 'no-store' } });
@@ -163,12 +165,38 @@ async function authenticate(req: Request, env: Env): Promise<{ id: string; name:
   if (!match) return null;
 
   const tokenHash = await sha256Hex(match[1]!);
-  return findDeviceByTokenHash(env.DB, tokenHash);
+  const device = await findDeviceByTokenHash(env.DB, tokenHash);
+  if (!device) return null;
+
+  // last_seen_at 只是运维信息：最多每小时刷新一次；刷新失败不影响本次请求。
+  const nowMs = Date.now();
+  const lastSeenMs = device.lastSeenAt ? Date.parse(device.lastSeenAt) : Number.NaN;
+  if (!Number.isFinite(lastSeenMs) || nowMs - lastSeenMs >= DEVICE_TOUCH_INTERVAL_MS) {
+    try {
+      await touchDeviceIfStale(env.DB, device.id, new Date(nowMs).toISOString());
+    } catch (error) {
+      console.warn('刷新设备活跃时间失败', error);
+    }
+  }
+
+  return { id: device.id, name: device.name };
 }
 
-function corsHeaders(origin: string, env: Env): Record<string, string> {
-  const allowed =
-    origin !== '' && (origin === env.APP_ORIGIN || /^http:\/\/localhost:\d+$/.test(origin));
+function corsHeaders(
+  origin: string,
+  env: Env,
+  selfHost: string,
+): Record<string, string> {
+  // localhost 来源只在 Worker 自己也跑在 localhost 时放行（wrangler dev）。
+  // 线上 Worker 即使收到来自 localhost 的 Origin 也不回 CORS 头，避免把开发
+  // 便利带进生产。
+  const localWorker =
+    selfHost === 'localhost' ||
+    selfHost === '127.0.0.1' ||
+    selfHost === '::1' ||
+    selfHost === '[::1]';
+  const localOrigin = /^http:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/.test(origin);
+  const allowed = origin !== '' && (origin === env.APP_ORIGIN || (localWorker && localOrigin));
 
   return {
     ...(allowed ? { 'access-control-allow-origin': origin } : {}),

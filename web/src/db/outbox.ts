@@ -70,6 +70,27 @@ export async function dropOutboxIfOlder(
   return true;
 }
 
+/**
+ * 远端版本覆盖本地后，清掉同一行上过期的「不合法数据」提示。
+ *
+ * 场景：设备 A 推送一条坏数据被 4xx 隔离；设备 B 修正后同步成功。
+ * A 拉取到新版本时本地行已经修好，但 quarantine 记录仍留着，设置页会一直
+ * 显示「N 条数据不合法」。只要隔离的版本不新于 incoming，就可以安全清掉。
+ */
+export async function dropQuarantineIfOlder(
+  db: TadaDb,
+  entity: EntityName,
+  rowId: string,
+  incomingHlc: string,
+): Promise<boolean> {
+  const key = outboxKey(entity, rowId);
+  const entry = await db.quarantine.get(key);
+  if (!entry) return false;
+  if (entry.hlc > incomingHlc) return false;
+  await db.quarantine.delete(key);
+  return true;
+}
+
 export interface QuarantineInput {
   key: string;
   hlc: string;

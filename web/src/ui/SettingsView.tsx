@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { backupFilename, createBackup } from '../db/backup';
 import { clearQuarantine } from '../db/outbox';
 import { getMeta, setMeta, type TadaDb } from '../db/schema';
 import { useLive } from '../hooks/useLive';
 import { formatLastSync } from '../lib/dates';
+import type { PersistStatus } from '../lib/storage';
 import type { SyncEngine, SyncSnapshot } from '../sync/engine';
 import { PairingForm } from './PairingForm';
 import { SyncBadge } from './SyncBadge';
@@ -13,6 +15,7 @@ export function SettingsView({
   sync,
   connected,
   notice,
+  storageStatus,
   onPair,
   onUnpair,
 }: {
@@ -21,6 +24,7 @@ export function SettingsView({
   sync: SyncSnapshot;
   connected: boolean;
   notice: string | null;
+  storageStatus: PersistStatus;
   onPair: (code: string, deviceName: string) => Promise<void>;
   onUnpair: () => void;
 }) {
@@ -34,6 +38,7 @@ export function SettingsView({
   const [name, setName] = useState(storedName);
   const [saved, setSaved] = useState(false);
   const [reseeded, setReseeded] = useState<number | null>(null);
+  const [exported, setExported] = useState<string | null>(null);
 
   useEffect(() => {
     setName(storedName);
@@ -78,6 +83,36 @@ export function SettingsView({
     return () => clearTimeout(timer);
   }, [reseeded]);
 
+  useEffect(() => {
+    if (exported === null) return;
+    const timer = setTimeout(() => setExported(null), 3000);
+    return () => clearTimeout(timer);
+  }, [exported]);
+
+  const persistenceHint =
+    storageStatus === 'granted'
+      ? '已申请持久化存储，浏览器会尽量保留本地数据。仍建议定期导出备份。'
+      : storageStatus === 'denied'
+        ? '浏览器未授予持久化存储：清理站点数据或空间紧张时可能丢失。请定期导出备份。'
+        : '当前浏览器不支持持久化申请。清理站点数据会丢失本地数据，请定期导出备份。';
+
+  const handleExport = async () => {
+    const backup = await createBackup(db);
+    const blob = new Blob([JSON.stringify(backup, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = backupFilename(new Date(backup.exportedAt));
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setExported(link.download);
+  };
+
   return (
     <section className="view">
       <header className="view-header">
@@ -86,12 +121,34 @@ export function SettingsView({
 
       {notice ? <div className="banner warning settings-banner">{notice}</div> : null}
 
+      <div className="settings-card">
+        <div className="setting-row">
+          <div>
+            <div className="setting-label">本地数据</div>
+            <div className="setting-hint">{persistenceHint}</div>
+          </div>
+          <div className="setting-control">
+            <button type="button" className="btn" onClick={() => void handleExport()}>
+              导出备份
+            </button>
+          </div>
+        </div>
+        <div className="setting-row">
+          <div className="setting-hint">
+            备份是 JSON 文件，包含列表和任务（含已删除墓碑），不包含配对 token。
+            {exported ? ` 已导出 ${exported}` : ''}
+          </div>
+        </div>
+      </div>
+
       {connected ? (
         <div className="settings-card">
           <div className="setting-row">
             <div>
               <div className="setting-label">设备名</div>
-              <div className="setting-hint">连接中继时登记，方便辨认是哪台设备。</div>
+              <div className="setting-hint">
+                配对时登记到中继；连接后修改只影响本机显示，不会更新服务端记录。
+              </div>
             </div>
             <div className="setting-control">
               <input

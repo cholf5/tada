@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { bootstrap } from './db/bootstrap';
 import type { RepoDeps } from './db/repo';
 import { createDb, setMeta, type TadaDb } from './db/schema';
+import { requestPersistentStorage, type PersistStatus } from './lib/storage';
 import { createHttpTransport, pairDevice } from './sync/api';
 import { SyncEngine, type SyncSnapshot } from './sync/engine';
 import { Workspace } from './ui/Workspace';
@@ -18,6 +19,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [sync, setSync] = useState<SyncSnapshot>({ status: 'unpaired', lastError: null });
+  const [storageStatus, setStorageStatus] = useState<PersistStatus>('unsupported');
   const initRef = useRef(false);
 
   useEffect(() => {
@@ -27,6 +29,9 @@ export default function App() {
     const db = createDb();
     bootstrap(db)
       .then((result) => {
+        // 尽早申请持久化存储；结果只影响设置页提示，不阻塞启动
+        void requestPersistentStorage().then(setStorageStatus);
+
         const engine = new SyncEngine({
           db,
           clock: result.clock,
@@ -104,6 +109,7 @@ export default function App() {
       sync={sync}
       connected={token !== null}
       notice={notice}
+      storageStatus={storageStatus}
       onPair={handlePair}
       onUnpair={() => {
         void handleUnpair();
