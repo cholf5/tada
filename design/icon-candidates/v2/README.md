@@ -80,12 +80,12 @@ python3 ~/.claude/skills/app-icon-design/scripts/preview-page.py \
 
 ## 最终选择（已落地）
 
-- **默认图标：05 签名火漆**（`05-signet.svg`）。已写入
+- **默认图标：02 火漆印**（`02-seal.svg`）。已写入
   `web/public/icons/maskable-source.svg`，`npm run icons` 重新生成了 192/512/
   maskable/apple-touch；`web/public/favicon.svg` 是同图形的圆角版。
-- **内置图标：第二版全部 5 个 + 经典对勾**。01/02/03/04 的 512 PNG 烘焙在
+- **内置图标：第二版全部 5 个 + 经典对勾**。01/03/04/05 的 512 PNG 烘焙在
   `web/src/assets/brand-icons/`，选择后走现有 `/api/branding` 上传链路；
-  05 是默认图标，选中它等于清除自定义图标。
+  02 是默认图标，选中它等于清除自定义图标；05 仍保留为内置选项。
 - **第一版前四个**不再作为独立图标堆在列表里，收敛成「经典对勾」的四个配色
   色板（金底墨勾 / 深蓝金勾 / 品牌蓝金勾 / 品牌蓝白勾），并支持任意底色和
   图形色。逻辑在 `web/src/lib/builtinIcons.ts`，UI 在
@@ -93,6 +93,10 @@ python3 ~/.claude/skills/app-icon-design/scripts/preview-page.py \
 - 侧栏品牌标记改为直接显示当前图标（默认/自定义）；旧蓝色勾字形已移除。
 - 内置材质图标使用构建时烘焙的 PNG，避免浏览器对 SVG 滤镜/图案的差异；
   只有纯色经典对勾在浏览器里走 canvas 栅格化。
+
+> 2026-11-27 更新：默认从 05 改回 02。原因是 05 的 t 在小像素下
+> 视觉重心偏右下，16px 不够对称；02 的勾在同等尺寸下更稳。
+> 05 的 512 PNG 仍作为内置选项保留。
 
 默认图标和品牌设置都按现有单租户模型：图标最终是一张 512 PNG 存在中继的
 `branding` 行里，没有新增 API 字段或 D1 列。

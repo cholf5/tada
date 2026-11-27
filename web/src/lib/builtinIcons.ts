@@ -2,7 +2,7 @@ import { HEX_COLOR_RE } from '@tada/shared';
 import enamelPng from '../assets/brand-icons/enamel.png';
 import notebookPng from '../assets/brand-icons/notebook.png';
 import ribbonPng from '../assets/brand-icons/ribbon.png';
-import sealPng from '../assets/brand-icons/seal.png';
+import signetPng from '../assets/brand-icons/signet.png';
 import type { MessageKey } from './i18n';
 
 /**
@@ -33,18 +33,18 @@ export interface BuiltinIcon {
 
 export const BUILTIN_ICONS: BuiltinIcon[] = [
   {
-    id: 'signet',
-    labelKey: 'branding.label.signet',
+    id: 'seal',
+    labelKey: 'branding.label.seal',
     hintKey: 'branding.hint.default',
     kind: 'default',
     preview: '/icons/icon-192.png',
   },
   {
-    id: 'seal',
-    labelKey: 'branding.label.seal',
+    id: 'signet',
+    labelKey: 'branding.label.signet',
     kind: 'asset',
-    preview: sealPng,
-    pngUrl: sealPng,
+    preview: signetPng,
+    pngUrl: signetPng,
   },
   {
     id: 'notebook',

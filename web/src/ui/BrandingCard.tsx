@@ -191,7 +191,7 @@ export function BrandingCard({ token }: { token: string }) {
     if (pendingIcon !== null) {
       payload.icon = { mime: 'image/png', data: pendingIcon };
     } else if (pendingReset && branding.hasCustomIcon) {
-      // 选中「签名火漆」= 回到默认图标；没有自定义图标时不必多写一次
+      // 选中默认图标（火漆印）= 回到仓库默认；没有自定义图标时不必多写一次
       payload.icon = null;
     }
 

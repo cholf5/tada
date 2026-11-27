@@ -182,7 +182,7 @@ quarantine     // 被服务端 4xx 永久拒绝、已跳过同步的毒丸条目
 - manifest：name/short_name/theme_color/background_color/display standalone/icons 192+512+maskable
 - 应用壳预缓存；`/api/*` 一律不缓存
 - 图标从一张 SVG 生成；若生成工具不可用，至少要有 SVG 图标 + apple-touch-icon，并在交付说明里写明
-- 实例品牌图标：默认是仓库里的「签名火漆」；设置页提供内置图标和可调色的经典对勾，
+- 实例品牌图标：默认是仓库里的「火漆印」；设置页提供内置图标和可调色的经典对勾，
   最终都以 512 PNG 经 `/api/branding` 存到中继，不新增服务端字段
 - iOS 主屏安装使用 `apple-mobile-web-app-capable` 等 meta，以独立窗口打开
 

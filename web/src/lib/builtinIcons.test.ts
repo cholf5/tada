@@ -11,8 +11,8 @@ import {
 describe('内置图标', () => {
   it('包含第二版全部图标和经典对勾', () => {
     expect(BUILTIN_ICONS.map((icon) => icon.id)).toEqual([
-      'signet',
       'seal',
+      'signet',
       'notebook',
       'ribbon',
       'enamel',
@@ -21,7 +21,7 @@ describe('内置图标', () => {
     expect(new Set(BUILTIN_ICONS.map((icon) => icon.id)).size).toBe(BUILTIN_ICONS.length);
   });
 
-  it('默认图标是签名火漆，材质图标都带 512 PNG', () => {
+  it('默认图标是火漆印，材质图标都带 512 PNG', () => {
     expect(BUILTIN_ICONS[0]?.kind).toBe('default');
     for (const icon of BUILTIN_ICONS) {
       if (icon.kind === 'asset') {
