@@ -1,0 +1,20 @@
+{
+  "name": "tada",
+  "private": true,
+  "type": "module",
+  "workspaces": ["shared", "relay", "web"],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev:web": "npm run dev -w @tada/web",
+    "dev:relay": "npm run dev -w @tada/relay",
+    "build": "npm run build -w @tada/web",
+    "deploy": "npm run build && npm run deploy -w @tada/relay",
+    "db:init": "npm run db:init -w @tada/relay",
+    "pair": "npm run pair -w @tada/relay",
+    "icons": "npm run icons -w @tada/web"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

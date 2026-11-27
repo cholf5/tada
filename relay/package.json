@@ -1,0 +1,24 @@
+{
+  "name": "@tada/relay",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:init": "wrangler d1 execute tada --remote --file=./schema.sql",
+    "db:init:local": "wrangler d1 execute tada --local --file=./schema.sql",
+    "pair": "node scripts/new-pairing-code.mjs"
+  },
+  "dependencies": {
+    "@tada/shared": "*",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.7",
+    "wrangler": "^4.0.0"
+  }
+}

@@ -1,0 +1,19 @@
+name = "tada-relay"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+# `wrangler d1 create tada` 之后把 database_id 填在这里
+[[d1_databases]]
+binding = "DB"
+database_name = "tada"
+database_id = "REPLACE_ME"
+
+# 前端构建产物（web/dist）和 API 同源部署，省掉 CORS
+[assets]
+directory = "../web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = true
+
+[vars]
+APP_ORIGIN = "https://tada-relay.YOUR-SUBDOMAIN.workers.dev"
