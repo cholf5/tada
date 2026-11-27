@@ -57,8 +57,8 @@ relay/src/     index.ts（路由） store.ts（SQL） pull.ts http.ts branding.t
 relay/         schema.sql  wrangler.toml
 web/src/       db/（Dexie、repo、outbox、backup）
                sync/（engine、push、pull、lww、clock、api）
-               ui/（Workspace、Sidebar、各视图、TaskDetail、SettingsView）
-               lib/（branding、iconResize、dates、colors、storage）
+               ui/（Workspace、Sidebar、各视图、TaskDetail、SettingsView、BrandingCard）
+               lib/（branding、builtinIcons、iconResize、dates、colors、storage）
                state/ hooks/
 docs/          SPEC.md（需求来源） HARDENING.md（加固记录 + 真机清单）
                FIX-ROUND*.md（历史轮次） REVIEW-WEB.md（复核清单）

@@ -115,15 +115,15 @@ export function Sidebar({
     <aside className={`sidebar${open ? ' is-open' : ''}`} aria-label="导航">
       <div className="brand">
         <span className="brand-mark" aria-hidden="true">
-          {branding.hasCustomIcon && branding.iconVersion !== null ? (
-            <img
-              className="brand-mark-img"
-              src={brandIconUrl(192, branding.iconVersion)}
-              alt=""
-            />
-          ) : (
-            <Icon name="check" size={15} />
-          )}
+          <img
+            className="brand-mark-img"
+            src={
+              branding.hasCustomIcon && branding.iconVersion !== null
+                ? brandIconUrl(192, branding.iconVersion)
+                : '/icons/icon-192.png'
+            }
+            alt=""
+          />
         </span>
         {branding.appName}
       </div>
