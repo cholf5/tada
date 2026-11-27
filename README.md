@@ -20,8 +20,8 @@ tada/
 ```bash
 npm install
 
-npm run dev:web      # Vite，5173；/api 代理到 8787
-npm run dev:relay    # wrangler dev，8787
+npm run dev:web      # Vite，5173；只跑这个也能用（仅本机）
+npm run dev:relay    # wrangler dev，8787；要测多端同步时再起
 npm run typecheck    # 三个 workspace 一起检查
 npm run build        # 构建前端到 web/dist
 npm run deploy       # 构建 + 部署 Worker（前端和 API 同源）
@@ -45,6 +45,7 @@ npm run deploy
 ## 设计要点
 
 - **本地优先**：所有读写先落本地库，同步是后台行为，不阻塞交互。
+- **中继可选**：不连接中继时就是纯本地单机应用；连上中继后才有跨端同步。
 - **行级 LWW + HLC**：同一行以 HLC 较大者为准，服务端只做字符串比较。
 - **墓碑删除**：删除是标记而非物理删除。
 - **typed 校验**：服务端认识 `lists` / `tasks`，非法数据 400 不落库；同时对未知字段宽容，旧客户端不会被新服务端打死。

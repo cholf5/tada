@@ -1,7 +1,7 @@
 import type { SyncSnapshot, SyncStatus } from '../sync/engine';
 
 const LABELS: Record<SyncStatus, string> = {
-  unpaired: '未配对',
+  unpaired: '仅本机',
   offline: '离线',
   syncing: '同步中',
   synced: '已同步',

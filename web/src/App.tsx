@@ -4,7 +4,6 @@ import type { RepoDeps } from './db/repo';
 import { createDb, setMeta, type TadaDb } from './db/schema';
 import { createHttpTransport, pairDevice } from './sync/api';
 import { SyncEngine, type SyncSnapshot } from './sync/engine';
-import { PairingView } from './ui/PairingView';
 import { Workspace } from './ui/Workspace';
 
 interface BootState {
@@ -17,7 +16,6 @@ export default function App() {
   const [boot, setBoot] = useState<BootState | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [deviceName, setDeviceName] = useState('');
   const [notice, setNotice] = useState<string | null>(null);
   const [sync, setSync] = useState<SyncSnapshot>({ status: 'unpaired', lastError: null });
   const initRef = useRef(false);
@@ -42,7 +40,6 @@ export default function App() {
         engine.subscribe((snapshot) => setSync(snapshot));
         engine.start();
 
-        setDeviceName(result.deviceName);
         setToken(result.token);
         setBoot({ db, deps: { db, clock: result.clock }, engine });
       })
@@ -61,7 +58,6 @@ export default function App() {
     // 标记本次配对：若服务器是空的，同步引擎会把本地数据重新入队补推
     await setMeta(boot.db, 'pairReseed', 1);
 
-    setDeviceName(name);
     setToken(nextToken);
     setNotice(null);
     void boot.engine.syncNow();
@@ -100,17 +96,15 @@ export default function App() {
     );
   }
 
-  if (!token) {
-    return <PairingView initialDeviceName={deviceName} notice={notice} onPair={handlePair} />;
-  }
-
   return (
     <Workspace
       db={boot.db}
       deps={boot.deps}
       engine={boot.engine}
       sync={sync}
-      onDeviceNameChange={setDeviceName}
+      connected={token !== null}
+      notice={notice}
+      onPair={handlePair}
       onUnpair={() => {
         void handleUnpair();
       }}

@@ -1322,48 +1322,21 @@ button.sync-badge:hover {
   font-size: 12px;
 }
 
+.settings-banner {
+  margin-top: 10px;
+}
+
+.relay-form-wrap {
+  padding: 16px 0 14px;
+}
+
+.relay-footnote {
+  margin: 12px 0 0;
+}
+
 /* ------------------------------------------------------------------ *
- * 配对页与启动页
+ * 连接中继表单与启动页
  * ------------------------------------------------------------------ */
-
-.pairing-screen {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100dvh;
-  padding: 24px;
-  background: var(--bg);
-}
-
-.pairing-card {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  width: min(430px, 100%);
-  padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  background: var(--surface);
-  box-shadow: var(--shadow);
-}
-
-.pairing-brand {
-  padding: 0;
-}
-
-.pairing-title {
-  margin: 0 0 6px;
-  font-size: 22px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.pairing-hint {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 14px;
-  line-height: 1.6;
-}
 
 .pairing-form {
   display: flex;
@@ -1392,13 +1365,6 @@ button.sync-badge:hover {
 
 .pairing-form input:focus {
   border-color: var(--accent);
-}
-
-.pairing-foot {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-  text-align: center;
 }
 
 .banner {

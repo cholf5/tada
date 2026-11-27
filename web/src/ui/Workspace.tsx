@@ -24,14 +24,18 @@ export function Workspace({
   deps,
   engine,
   sync,
-  onDeviceNameChange,
+  connected,
+  notice,
+  onPair,
   onUnpair,
 }: {
   db: TadaDb;
   deps: RepoDeps;
   engine: SyncEngine;
   sync: SyncSnapshot;
-  onDeviceNameChange: (name: string) => void;
+  connected: boolean;
+  notice: string | null;
+  onPair: (code: string, deviceName: string) => Promise<void>;
   onUnpair: () => void;
 }) {
   const actions = useActions(deps, engine);
@@ -166,7 +170,9 @@ export function Workspace({
           db={db}
           engine={engine}
           sync={sync}
-          onDeviceNameChange={onDeviceNameChange}
+          connected={connected}
+          notice={notice}
+          onPair={onPair}
           onUnpair={onUnpair}
         />
       );
@@ -269,6 +275,10 @@ export function Workspace({
           searchRef={searchRef}
           sync={sync}
           onSyncNow={() => {
+            if (!connected) {
+              navigate({ kind: 'settings' });
+              return;
+            }
             void engine.syncNow();
           }}
         />
