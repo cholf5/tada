@@ -17,3 +17,5 @@ run_worker_first = true
 
 [vars]
 APP_ORIGIN = "https://tada-relay.YOUR-SUBDOMAIN.workers.dev"
+# 可选：默认应用名。设置页保存过之后以 D1 里的品牌为准。
+# APP_NAME = "Tada"

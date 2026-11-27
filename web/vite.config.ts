@@ -11,6 +11,8 @@ export default defineConfig({
       injectRegister: null,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
+        // 身份层：公开后再加/改会被浏览器当成另一个应用
+        id: '/',
         name: 'Tada',
         short_name: 'Tada',
         description: '单用户、多端同步、本地优先的待办应用',
@@ -34,10 +36,44 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // 构建时的静态 manifest 不能进预缓存，否则会盖住 Worker 的动态版本
+        globIgnores: ['**/manifest.webmanifest'],
+        // vite-plugin-pwa 还会把 manifest 追加到 additionalManifestEntries，
+        // 而这一步发生在所有 manifestTransforms 之后；globIgnores 管不到它。
+        // 这里给最终数组的 push 加一道过滤，确保静态 manifest 不进预缓存。
+        manifestTransforms: [
+          (entries) => {
+            const manifest = entries.filter(
+              (entry) => !entry.url.endsWith('manifest.webmanifest'),
+            );
+            const push = manifest.push.bind(manifest);
+            manifest.push = (...items: typeof manifest) =>
+              push(
+                ...items.filter(
+                  (item) => !item.url.endsWith('manifest.webmanifest'),
+                ),
+              );
+            return { manifest, warnings: [] };
+          },
+        ],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
-        // 任何 /api 请求都直连网络，不读缓存也不写缓存
-        runtimeCaching: [{ urlPattern: /\/api\//, handler: 'NetworkOnly' }],
+        runtimeCaching: [
+          // 品牌 manifest 走网络优先，离线时退回最近一次
+          {
+            urlPattern: /\/manifest\.webmanifest$/,
+            handler: 'NetworkFirst',
+            options: { cacheName: 'manifest', networkTimeoutSeconds: 3 },
+          },
+          // 动态图标 URL 带 ?v=，内容不会变，可以放心长期缓存
+          {
+            urlPattern: ({ url }) => url.pathname.startsWith('/branding/'),
+            handler: 'CacheFirst',
+            options: { cacheName: 'branding-icons' },
+          },
+          // 任何 /api 请求都直连网络，不读缓存也不写缓存
+          { urlPattern: /\/api\//, handler: 'NetworkOnly' },
+        ],
         cleanupOutdatedCaches: true,
       },
     }),

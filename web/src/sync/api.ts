@@ -5,6 +5,7 @@ import type {
   PushResponse,
   WireChange,
 } from '@tada/shared';
+import type { BrandingState } from '../lib/branding';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -88,11 +89,45 @@ export async function pairDevice(
   return res.token;
 }
 
-async function call<T>(url: string, init: RequestInit): Promise<T> {
+/* ------------------------------------------------------------------ *
+ * 实例品牌
+ * ------------------------------------------------------------------ */
+
+export interface BrandingPayload {
+  appName?: string;
+  icon?: { mime: string; data: string } | null;
+}
+
+/** 读接口不需要鉴权；品牌不是关键路径，只等 5 秒。 */
+export async function fetchBranding(baseUrl = ''): Promise<BrandingState> {
+  return call<BrandingState>(`${baseUrl}/api/branding`, {}, 5_000);
+}
+
+/** 写接口必须带配对 token；成功返回最新的品牌状态。 */
+export async function postBranding(
+  token: string,
+  body: BrandingPayload,
+  baseUrl = '',
+): Promise<BrandingState> {
+  return call<BrandingState>(`${baseUrl}/api/branding`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
+async function call<T>(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number = REQUEST_TIMEOUT_MS,
+): Promise<T> {
   let res: Response;
   try {
     // 所有请求统一超时，避免挂起的连接把同步引擎卡在「同步中」
-    res = await fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch (error) {
     if (isAbort(error)) throw new RequestTimeoutError();
     throw new ApiError('无法连接服务器，请检查网络', 0);

@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { bootstrap } from './db/bootstrap';
 import type { RepoDeps } from './db/repo';
 import { createDb, setMeta, type TadaDb } from './db/schema';
+import { useBranding } from './hooks/useBranding';
+import { initBranding } from './lib/branding';
 import { requestPersistentStorage, type PersistStatus } from './lib/storage';
 import { createHttpTransport, pairDevice } from './sync/api';
 import { SyncEngine, type SyncSnapshot } from './sync/engine';
@@ -21,11 +23,14 @@ export default function App() {
   const [sync, setSync] = useState<SyncSnapshot>({ status: 'unpaired', lastError: null });
   const [storageStatus, setStorageStatus] = useState<PersistStatus>('unsupported');
   const initRef = useRef(false);
+  const branding = useBranding();
 
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
 
+    // 品牌与数据库 bootstrap 并行，不阻塞启动
+    void initBranding();
     const db = createDb();
     bootstrap(db)
       .then((result) => {
@@ -82,7 +87,7 @@ export default function App() {
   if (bootError) {
     return (
       <div className="splash">
-        <div className="brand">Tada</div>
+        <div className="brand">{branding.appName}</div>
         <p className="splash-title">无法打开本地数据库</p>
         <p className="splash-hint">{bootError}</p>
         <button type="button" className="btn" onClick={() => window.location.reload()}>
@@ -95,7 +100,7 @@ export default function App() {
   if (!boot) {
     return (
       <div className="splash">
-        <div className="brand">Tada</div>
+        <div className="brand">{branding.appName}</div>
         <p className="splash-hint">正在加载本地数据…</p>
       </div>
     );
@@ -107,6 +112,7 @@ export default function App() {
       deps={boot.deps}
       engine={boot.engine}
       sync={sync}
+      token={token}
       connected={token !== null}
       notice={notice}
       storageStatus={storageStatus}

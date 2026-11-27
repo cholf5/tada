@@ -257,6 +257,166 @@ describe('HTTP + 真实 SQLite 的同步闭环', () => {
     expect(second.hasMore).toBe(false);
   });
 
+  it('实例品牌：写接口要 token，读接口与 manifest 跟随变化', async () => {
+    // 无 token 不能改品牌
+    const denied = await http('/api/branding', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ appName: '匿名改名' }),
+    });
+    expect(denied.status).toBe(401);
+
+    // 默认读接口不需要鉴权
+    const initial = await http('/api/branding');
+    expect(initial.status).toBe(200);
+    expect(await initial.json()).toEqual({
+      appName: 'Tada',
+      iconVersion: null,
+      hasCustomIcon: false,
+    });
+
+    await insertCode(CODE_A);
+    const token = await pair(CODE_A, '品牌设备');
+
+    const saved = await http('/api/branding', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ appName: '我的待办' }),
+    });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({
+      appName: '我的待办',
+      iconVersion: null,
+      hasCustomIcon: false,
+    });
+
+    const manifest = await http('/manifest.webmanifest');
+    expect(manifest.status).toBe(200);
+    expect(manifest.headers.get('content-type')).toBe('application/manifest+json');
+    expect(manifest.headers.get('cache-control')).toBe('no-cache');
+    expect(await manifest.json()).toMatchObject({
+      id: '/',
+      name: '我的待办',
+      short_name: '我的待办',
+    });
+
+    // 上传 PNG：图标走 BLOB 往返，manifest 切到自定义图标分支
+    const png = new Uint8Array([137, 80, 78, 71, 1, 2, 3]);
+    const uploaded = await http('/api/branding', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        icon: { mime: 'image/png', data: Buffer.from(png).toString('base64') },
+      }),
+    });
+    expect(uploaded.status).toBe(200);
+    const uploadedBody = (await uploaded.json()) as {
+      appName: string;
+      iconVersion: string;
+      hasCustomIcon: boolean;
+    };
+    expect(uploadedBody.appName).toBe('我的待办');
+    expect(uploadedBody.hasCustomIcon).toBe(true);
+    expect(uploadedBody.iconVersion).toMatch(/^[0-9a-f]{8}$/);
+
+    const icon = await http(`/branding/icon-192.png?v=${uploadedBody.iconVersion}`);
+    expect(icon.status).toBe(200);
+    expect(icon.headers.get('content-type')).toBe('image/png');
+    expect(icon.headers.get('cache-control')).toBe(
+      'public, max-age=31536000, immutable',
+    );
+    expect(new Uint8Array(await icon.arrayBuffer())).toEqual(png);
+
+    const customManifest = (await (await http('/manifest.webmanifest')).json()) as {
+      icons: Array<{ src: string }>;
+    };
+    expect(customManifest.icons.map((item) => item.src)).toEqual([
+      `/branding/icon-192.png?v=${uploadedBody.iconVersion}`,
+      `/branding/icon-512.png?v=${uploadedBody.iconVersion}`,
+    ]);
+
+    // 非法名称不会写成半套数据
+    const invalid = await http('/api/branding', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ appName: '   ' }),
+    });
+    expect(invalid.status).toBe(400);
+    expect(await invalid.json()).toEqual({ error: 'invalid branding' });
+    expect((await (await http('/api/branding')).json()) as { appName: string }).toMatchObject({
+      appName: '我的待办',
+    });
+  });
+
+  it('首页 HTML 按实例品牌改写，非 HTML 资源原样通过', async () => {
+    const indexHtml = `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta name="application-name" content="Tada" />
+    <meta name="apple-mobile-web-app-title" content="Tada" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Tada</title>
+  </head>
+  <body><div id="root"></div></body>
+</html>`;
+
+    env = {
+      ...env,
+      ASSETS: {
+        fetch: async (req: Request) => {
+          const path = new URL(req.url).pathname;
+          if (path.endsWith('.js')) {
+            return new Response('console.log(1)', {
+              headers: { 'content-type': 'application/javascript' },
+            });
+          }
+          return new Response(indexHtml, {
+            headers: { 'content-type': 'text/html; charset=utf-8' },
+          });
+        },
+      } as unknown as Fetcher,
+    };
+
+    const before = await http('/');
+    expect(await before.text()).toContain('<title>Tada</title>');
+
+    await insertCode(CODE_A);
+    const token = await pair(CODE_A, 'HTML 设备');
+    const saved = await http('/api/branding', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ appName: '我的清单' }),
+    });
+    expect(saved.status).toBe(200);
+
+    // SPA fallback（任意路径）也要带品牌
+    const after = await http('/lists');
+    const html = await after.text();
+    expect(html).toContain('<title>我的清单</title>');
+    expect(html).toContain('<meta name="application-name" content="我的清单" />');
+    expect(html).toContain(
+      '<meta name="apple-mobile-web-app-title" content="我的清单" />',
+    );
+    expect(after.headers.get('cache-control')).toBe('no-cache');
+
+    // 非 HTML 资源不能被当成模板改写
+    const script = await http('/assets/index.js');
+    expect(await script.text()).toBe('console.log(1)');
+  });
+
   it('鉴权头与非法请求的 HTTP 语义', async () => {
     // 无 token / 错 token
     expect((await push('', [])).status).toBe(401);

@@ -56,3 +56,13 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 CREATE INDEX IF NOT EXISTS idx_tasks_seq  ON tasks (seq);
 CREATE INDEX IF NOT EXISTS idx_tasks_list ON tasks (list_id);
+
+-- 实例品牌：单行。自托管者可以改应用名和图标。
+CREATE TABLE IF NOT EXISTS branding (
+  id           INTEGER PRIMARY KEY CHECK (id = 1),
+  app_name     TEXT NOT NULL,
+  icon_mime    TEXT,
+  icon_version TEXT,
+  icon_blob    BLOB,
+  updated_at   TEXT NOT NULL
+);

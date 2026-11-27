@@ -9,6 +9,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ListRow } from '../db/schema';
+import { useBranding } from '../hooks/useBranding';
+import { brandIconUrl } from '../lib/branding';
 import { listColor } from '../lib/colors';
 import type { View } from '../state/view';
 import { Icon, type IconName } from './icons';
@@ -84,6 +86,7 @@ export function Sidebar({
   const [newListName, setNewListName] = useState('');
   const sensors = useSortableSensors();
   const draggedRef = useRef(false);
+  const branding = useBranding();
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -112,9 +115,17 @@ export function Sidebar({
     <aside className={`sidebar${open ? ' is-open' : ''}`} aria-label="导航">
       <div className="brand">
         <span className="brand-mark" aria-hidden="true">
-          <Icon name="check" size={15} />
+          {branding.hasCustomIcon && branding.iconVersion !== null ? (
+            <img
+              className="brand-mark-img"
+              src={brandIconUrl(192, branding.iconVersion)}
+              alt=""
+            />
+          ) : (
+            <Icon name="check" size={15} />
+          )}
         </span>
-        Tada
+        {branding.appName}
       </div>
 
       <nav className="sidebar-nav">

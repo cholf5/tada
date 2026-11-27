@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { backupFilename, createBackup } from '../db/backup';
 import { clearQuarantine } from '../db/outbox';
 import { getMeta, setMeta, type TadaDb } from '../db/schema';
+import { useBranding } from '../hooks/useBranding';
 import { useLive } from '../hooks/useLive';
+import { applyBrandingToDocument, setCachedBranding } from '../lib/branding';
 import { formatLastSync } from '../lib/dates';
+import { resizeToPngBase64 } from '../lib/iconResize';
 import type { PersistStatus } from '../lib/storage';
+import { ApiError, postBranding, type BrandingPayload } from '../sync/api';
 import type { SyncEngine, SyncSnapshot } from '../sync/engine';
 import { PairingForm } from './PairingForm';
 import { SyncBadge } from './SyncBadge';
@@ -13,6 +17,7 @@ export function SettingsView({
   db,
   engine,
   sync,
+  token,
   connected,
   notice,
   storageStatus,
@@ -22,6 +27,7 @@ export function SettingsView({
   db: TadaDb;
   engine: SyncEngine;
   sync: SyncSnapshot;
+  token: string | null;
   connected: boolean;
   notice: string | null;
   storageStatus: PersistStatus;
@@ -170,6 +176,8 @@ export function SettingsView({
         </div>
       ) : null}
 
+      {connected && token ? <BrandingCard token={token} /> : null}
+
       <div className="settings-card">
         <div className="setting-row">
           <div>
@@ -270,4 +278,183 @@ export function SettingsView({
       ) : null}
     </section>
   );
+}
+
+/* ------------------------------------------------------------------ *
+ * 实例品牌
+ * ------------------------------------------------------------------ */
+
+/** 只在 connected 时挂载：写接口需要 token。 */
+function BrandingCard({ token }: { token: string }) {
+  const branding = useBranding();
+  const [name, setName] = useState(branding.appName);
+  const [pendingIcon, setPendingIcon] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setName(branding.appName);
+  }, [branding.appName]);
+
+  useEffect(() => {
+    if (!saved) return;
+    const timer = setTimeout(() => setSaved(false), 1600);
+    return () => clearTimeout(timer);
+  }, [saved]);
+
+  // 预览 URL 的生命周期跟着 state 走：替换或卸载时 revoke
+  useEffect(() => {
+    if (!previewUrl) return;
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
+
+  const chooseIcon = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    try {
+      const data = await resizeToPngBase64(file);
+      setPendingIcon(data);
+      setPreviewUrl(URL.createObjectURL(file));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '无法读取图片');
+    } finally {
+      // 允许再次选择同一个文件
+      event.target.value = '';
+    }
+  };
+
+  const applySavedBranding = (next: Awaited<ReturnType<typeof postBranding>>) => {
+    setCachedBranding(next);
+    applyBrandingToDocument(next);
+    setPendingIcon(null);
+    setPreviewUrl(null);
+    setSaved(true);
+  };
+
+  const save = async () => {
+    const trimmed = name.trim();
+    const payload: BrandingPayload = {};
+    if (trimmed !== branding.appName) {
+      if (!trimmed) {
+        setError('应用名称不能为空');
+        return;
+      }
+      payload.appName = trimmed;
+    }
+    if (pendingIcon !== null) payload.icon = { mime: 'image/png', data: pendingIcon };
+
+    if (payload.appName === undefined && payload.icon === undefined) {
+      setName(branding.appName);
+      setSaved(true);
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      applySavedBranding(await postBranding(token, payload));
+    } catch (err) {
+      setError(describeBrandingError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const restoreDefaultIcon = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      applySavedBranding(await postBranding(token, { icon: null }));
+    } catch (err) {
+      setError(describeBrandingError(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="settings-card">
+      <div className="setting-row">
+        <div>
+          <div className="setting-label">实例品牌</div>
+          <div className="setting-hint">
+            名称和图标保存在中继上，对所有连接的设备生效；离线设备下次连接后更新。
+          </div>
+        </div>
+        <div className="setting-control">
+          <input
+            value={name}
+            aria-label="应用名称"
+            maxLength={40}
+            onChange={(event) => setName(event.target.value)}
+          />
+          {saved ? <span className="saved-hint">已保存</span> : null}
+        </div>
+      </div>
+
+      <div className="setting-row">
+        <div>
+          <div className="setting-label">应用图标</div>
+          <div className="setting-hint">
+            只需上传一张正方形图片，浏览器会自动缩成 512×512 的 PNG。
+          </div>
+          {pendingIcon ? <div className="setting-hint">新图标将在保存后生效</div> : null}
+          {error ? <div className="form-error">{error}</div> : null}
+        </div>
+        <div className="setting-control branding-control">
+          {previewUrl ? <img className="brand-preview" src={previewUrl} alt="图标预览" /> : null}
+          <input
+            type="file"
+            className="brand-file"
+            accept="image/png,image/jpeg,image/webp"
+            aria-label="选择应用图标"
+            onChange={(event) => {
+              void chooseIcon(event);
+            }}
+          />
+          {branding.hasCustomIcon ? (
+            <button
+              type="button"
+              className="btn"
+              disabled={saving}
+              onClick={() => {
+                void restoreDefaultIcon();
+              }}
+            >
+              恢复默认图标
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="btn primary"
+            disabled={saving}
+            onClick={() => {
+              void save();
+            }}
+          >
+            {saving ? '保存中…' : '保存'}
+          </button>
+        </div>
+      </div>
+
+      <div className="setting-row">
+        <div className="setting-hint">
+          已添加到主屏幕的应用需要删除后重新添加，名字和图标才会更新。
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function describeBrandingError(error: unknown): string {
+  if (error instanceof ApiError) {
+    if (error.status === 401) return '凭证失效，请重新配对';
+    if (error.status === 0) return '无法连接服务器';
+    if (error.status === 400) return '名称或图片不符合要求';
+  }
+  return error instanceof Error ? error.message : '保存失败';
 }

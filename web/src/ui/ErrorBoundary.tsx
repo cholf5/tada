@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { getCachedBranding } from '../lib/branding';
 
 interface ErrorBoundaryState {
   error: Error | null;
@@ -25,9 +26,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
   render(): ReactNode {
     if (!this.state.error) return this.props.children;
 
+    // class 组件不能用 hook；缓存读取是同步且安全的
     return (
       <div className="splash">
-        <div className="brand">Tada</div>
+        <div className="brand">{getCachedBranding().appName}</div>
         <p className="splash-title">界面遇到了一点问题</p>
         <p className="splash-hint">
           本地数据仍然保存在这台设备上。重新加载通常就能恢复；如果反复出现，请重新加载后到设置导出一份备份再反馈。

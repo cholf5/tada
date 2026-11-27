@@ -25,6 +25,7 @@ export function Workspace({
   deps,
   engine,
   sync,
+  token,
   connected,
   notice,
   storageStatus,
@@ -35,6 +36,7 @@ export function Workspace({
   deps: RepoDeps;
   engine: SyncEngine;
   sync: SyncSnapshot;
+  token: string | null;
   connected: boolean;
   notice: string | null;
   storageStatus: PersistStatus;
@@ -173,6 +175,7 @@ export function Workspace({
           db={db}
           engine={engine}
           sync={sync}
+          token={token}
           connected={connected}
           notice={notice}
           storageStatus={storageStatus}
