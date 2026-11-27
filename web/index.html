@@ -14,6 +14,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Tada</title>
+    <!-- 首屏绘制前套用手动选择的日间/夜间，避免闪一下系统配色。
+         键名与 web/src/lib/theme.ts 的 STORAGE_KEY 保持一致。 -->
+    <script>
+      (function () {
+        try {
+          var mode = localStorage.getItem('tada.theme');
+          if (mode === 'light' || mode === 'dark') {
+            document.documentElement.setAttribute('data-theme', mode);
+          }
+        } catch (error) {
+          /* localStorage 不可用时退回 CSS 的「跟随系统」 */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

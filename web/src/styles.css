@@ -1,3 +1,4 @@
+/* 日间是默认配色；夜间由系统偏好或设置页的 data-theme='dark' 覆盖。 */
 :root {
   color-scheme: light dark;
 
@@ -19,8 +20,12 @@
   --transition: 150ms ease;
 }
 
+/* 跟随系统：没有手动选择（或选了「跟随系统」）时才按系统偏好走。
+   手动选了日间时，即使系统是深色也保持日间。 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
     --bg: #0f1115;
     --surface: #171a21;
     --surface-muted: #1f232c;
@@ -36,6 +41,31 @@
     --dot-default: #6b7280;
     --shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
   }
+}
+
+/* 手动选择夜间：深色值与上面的系统深色保持一致，改一处记得同步另一处。 */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #0f1115;
+  --surface: #171a21;
+  --surface-muted: #1f232c;
+  --text: #e7e9ee;
+  --text-secondary: #9aa1ad;
+  --border: #2a2f3a;
+  --accent: #6ea8ff;
+  --accent-soft: rgba(110, 168, 255, 0.14);
+  --danger: #ff6b6b;
+  --danger-soft: rgba(255, 107, 107, 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.12);
+  --dot-default: #6b7280;
+  --shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+}
+
+/* 手动选择日间：系统是深色时也要让原生控件保持日间外观。 */
+:root[data-theme='light'] {
+  color-scheme: light;
 }
 
 * {
@@ -1323,6 +1353,37 @@ button.sync-badge:hover {
 
 .setting-control input:focus {
   border-color: var(--accent);
+}
+
+/* 外观：跟随系统 / 日间 / 夜间 三档 */
+.theme-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+}
+
+.theme-switch button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.theme-switch button:hover {
+  color: var(--text);
+}
+
+.theme-switch button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.16);
 }
 
 .saved-hint {

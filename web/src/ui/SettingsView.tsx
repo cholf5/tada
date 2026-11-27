@@ -5,10 +5,17 @@ import { getMeta, setMeta, type TadaDb } from '../db/schema';
 import { useLive } from '../hooks/useLive';
 import { formatLastSync } from '../lib/dates';
 import type { PersistStatus } from '../lib/storage';
+import { readStoredThemeMode, setThemeMode, type ThemeMode } from '../lib/theme';
 import type { SyncEngine, SyncSnapshot } from '../sync/engine';
 import { BrandingCard } from './BrandingCard';
 import { PairingForm } from './PairingForm';
 import { SyncBadge } from './SyncBadge';
+
+const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
+  { value: 'system', label: '跟随系统' },
+  { value: 'light', label: '日间' },
+  { value: 'dark', label: '夜间' },
+];
 
 export function SettingsView({
   db,
@@ -42,6 +49,12 @@ export function SettingsView({
   const [saved, setSaved] = useState(false);
   const [reseeded, setReseeded] = useState<number | null>(null);
   const [exported, setExported] = useState<string | null>(null);
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(() => readStoredThemeMode());
+
+  const changeTheme = (mode: ThemeMode) => {
+    setThemeModeState(mode);
+    setThemeMode(mode);
+  };
 
   useEffect(() => {
     setName(storedName);
@@ -123,6 +136,31 @@ export function SettingsView({
       </header>
 
       {notice ? <div className="banner warning settings-banner">{notice}</div> : null}
+
+      <div className="settings-card">
+        <div className="setting-row">
+          <div>
+            <div className="setting-label">外观</div>
+            <div className="setting-hint">
+              「跟随系统」随设备自动切换；手动选择只影响这台设备。
+            </div>
+          </div>
+          <div className="setting-control">
+            <div className="theme-switch" role="group" aria-label="外观模式">
+              {THEME_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={themeMode === option.value}
+                  onClick={() => changeTheme(option.value)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="settings-card">
         <div className="setting-row">
