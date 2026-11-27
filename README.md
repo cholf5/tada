@@ -1,96 +1,164 @@
-# Tada
+<p align="center">
+  <img src="web/public/icons/icon-192.png" width="96" alt="Tada 图标">
+</p>
 
-单用户、多端同步的待办应用。本地优先：每台设备有自己的本地库，点按立即生效、断网可用；中继只负责收发和冲突裁决。
+<h1 align="center">Tada</h1>
 
-**本项目只提供源码，不提供托管服务。** 想用请自行部署；一个中继只服务一个人。
+<p align="center">单用户、多端同步的待办应用。本地优先：每台设备有自己的本地库，点按立即生效，断网照常使用。</p>
 
-## 结构
+<p align="center">
+  <a href="https://github.com/cholf5/tada/actions/workflows/ci.yml"><img src="https://github.com/cholf5/tada/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="Apache-2.0"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A5%2024-339933.svg" alt="Node.js 24+">
+</p>
 
-```
-tada/
-├── shared/    @tada/shared  协议、实体类型、zod 校验、HLC —— 只写一遍
-├── relay/     @tada/relay   Cloudflare Worker + D1
-└── web/       @tada/web     React PWA（Vite）
-```
+> [!IMPORTANT]
+> **本项目只提供源码，不提供托管服务。** 想用请自行部署；一个中继只服务一个人。
 
-`shared` 是唯一的接口定义处：实体类型、校验 schema、HLC 编码都从这里出，中继和前端各自 import，不会漂移。
+列表、任务、子任务、今天、全部、搜索，外加一套可选的多端同步。需要别人参与或需要后台推送的东西——协作、共享、提醒、活动流——都被刻意拿掉了。
 
-## 常用命令
+## 功能
 
-开发前提：Node.js ≥ 24（relay 测试直接用内置的 `node:sqlite`，Node 22 需要额外的实验开关）。
+| 功能 | 说明 |
+|---|---|
+| **列表** | 新建、改名、改色、拖拽排序、删除 |
+| **任务** | 快速添加、行内改标题、备注、截止日期、完成与恢复、拖拽排序、移动到其他列表 |
+| **子任务** | 在任务详情里添加、勾选、删除，只有一层；父任务显示完成进度 |
+| **视图** | 今天（含逾期）、全部、已完成归档、单个列表 |
+| **搜索** | 跨列表搜索标题和备注，命中的子任务会补上父任务标题 |
+| **同步** | 多端增量同步，离线写入，行级 LWW；未配对时完全单机 |
+| **安装** | PWA，可添加到主屏幕，离线启动，自动更新 |
+| **设置** | 配对、设备名、同步状态、立即同步、解除配对、导出备份、重新上传本地数据 |
+
+## 快速开始
+
+需要 Node.js ≥ 24（relay 测试直接使用内置的 `node:sqlite`）。前端是纯浏览器环境，装好依赖就能跑。
 
 ```bash
 npm install
-
-npm run dev:web      # Vite，5173；只跑这个也能用（仅本机）
-npm run dev:relay    # wrangler dev，8787；要测多端同步时再起
-npm run typecheck    # 三个 workspace 一起检查
-npm run test         # 协议、同步引擎、relay SQL 与 HTTP+SQL E2E
-npm run build        # 构建前端到 web/dist
-npm run deploy       # 构建 + 部署 Worker（前端和 API 同源）
+npm run dev:web
 ```
 
-## 本地数据与备份
+打开 <http://localhost:5173> 即可使用。不启动中继时就是纯本地应用，功能完整。
 
-本地数据在 IndexedDB 里，是唯一一份：
+要测多端同步，再起一个本地中继：
 
-- 启动时会尝试 `navigator.storage.persist()` 申请持久化存储；浏览器可以拒绝。
-- 设置 → 本地数据可以看到持久化状态，并导出 JSON 备份。
-- 备份包含列表和任务（含已删除墓碑），**不包含**配对 token；导入恢复尚未实现，需要手工处理。
-- 清理站点数据、浏览器回收空间或 iOS 长期不用都可能让本地数据消失。开了同步时中继上还有一份；纯本地使用时请定期导出。
-- iOS 主屏安装依靠 `apple-mobile-web-app-capable` 等 meta 以独立窗口打开；更细的真机行为见 `docs/HARDENING.md`。
+```bash
+npm run db:init:local -w @tada/relay   # 本地 D1 建表，只需一次
+npx wrangler d1 execute tada --local --command \
+  "INSERT INTO pairing_codes (code, expires_at) VALUES ('AAAA111111', strftime('%Y-%m-%dT%H:%M:%fZ','now','+10 minutes'))"
+npm run dev:relay                      # 127.0.0.1:8787
+```
 
-## 测试与 CI
+然后在「设置 → 中继」里填入配对码 `AAAA111111`。Vite 已经把 `/api` 代理到 8787。
 
-- relay 的测试用 Node 内置 `node:sqlite` 执行真实 `schema.sql`，其中 `relay/src/e2e.test.ts` 走完整 HTTP 层：配对、两台客户端 push/pull、LWW、墓碑、分页、401。
-- GitHub Actions 配置在 `.github/workflows/ci.yml`，依次执行 typecheck、test、生产依赖审计和 build。
+## 它是怎么工作的
 
-## 中继
+```text
+┌─ 浏览器 / PWA ─────────────────────────────┐
+│ React 19 · Vite · Dexie（IndexedDB）       │
+│ 所有读写先落本地，UI 立即响应              │
+└───────────────┬────────────────────────────┘
+                │ push / pull（可选）
+┌───────────────▼────────────────────────────┐
+│ Cloudflare Worker + D1                     │
+│ 配对鉴权 · 行级 LWW · 墓碑删除             │
+└────────────────────────────────────────────┘
+```
 
-接口契约见 [`relay/README.md`](relay/README.md)。
+- **本地优先**：写行和 `outbox` 在同一个 Dexie 事务里完成，同步是后台行为；网络失败不回滚 UI。
+- **中继可选**：未配对时整条同步链路不存在，应用照常单机工作。
+- **行级 LWW + HLC**：同一行以 HLC 较大者为准，服务端只比较字符串。
+- **墓碑删除**：删除是 `deleted = 1` 加新 HLC，永不物理删除，避免另一端把行复活。
+- **协议只写一遍**：实体类型、zod 校验、HLC 都在 `shared/`，前端和中继各自 import。
+- **同源部署**：Worker 同时托管 `web/dist` 和 API，省掉 CORS；PWA 身份固定为 `/`，不随品牌变化。
+
+仓库结构：
+
+```text
+shared/   @tada/shared  实体类型、zod 校验、HLC、API 类型
+relay/    @tada/relay   Cloudflare Worker + D1，手写 SQL
+web/      @tada/web     React 19 PWA，Dexie + @dnd-kit
+```
+
+## 常用命令
+
+| 命令 | 作用 |
+|---|---|
+| `npm run dev:web` | Vite 开发服务器（5173） |
+| `npm run dev:relay` | Wrangler 本地中继（8787） |
+| `npm run typecheck` | 三个 workspace 一起类型检查 |
+| `npm run test` | 协议、同步引擎、relay SQL 与 HTTP+SQL E2E |
+| `npm run build` | 构建前端到 `web/dist` |
+| `npm run deploy` | 构建并部署 Worker |
+| `npm run db:init` | 在远端 D1 建表或补表 |
+| `npm run pair` | 生成一次性配对码，并打印写入 D1 的命令 |
+| `npm run icons` | 从 SVG 重新生成 PWA 图标 |
+
+## 部署中继
 
 首次部署：
 
 ```bash
-cd relay
 npx wrangler login
-npx wrangler d1 create tada      # 把 database_id 填进 wrangler.toml
+cd relay && npx wrangler d1 create tada   # 把 database_id 填进 wrangler.toml
 cd ..
 npm run db:init
 npm run deploy
 ```
 
-## 自定义名称和图标
+- 自定义域名或跨源访问时，在 `relay/wrangler.toml` 里把 `APP_ORIGIN` 填成实际前端来源；同源部署可以保留占位值。
+- 从旧版本升级、缺 `branding` 表时，重跑一次 `npm run db:init`。
 
-自托管的实例可以改成自己的应用名和图标，所有连接的设备都会看到：
+配对一台设备：
 
-1. 配对后在「设置 → 实例品牌」里改名称、选内置图标（或上传自己的），保存即可。
-2. 内置图标包括**签名火漆（默认）**、火漆印、笔记本、纸与丝带、珐琅勾；
-   「经典对勾」可以改底色和图形颜色，第一版的四套配色也在色板里。
-3. 也可以不配对，直接在 `relay/wrangler.toml` 的 `[vars]` 里设置
-   `APP_NAME = "你的应用名"`。注意：一旦在设置页保存过，就以 D1 里的值为准，
-   之后修改 `APP_NAME` 不会覆盖它。
-4. 上传的图标只需一张正方形图片（PNG / JPEG / WebP），浏览器会先在本地缩成
-   512×512 的 PNG 再上传；中继只保存这一张图。内置图标也在浏览器里生成
-   512 PNG，走同一条上传链路；选中「签名火漆」等于清除自定义图标，回到仓库
-   里的默认图标。
-5. 已经添加到主屏幕的 PWA 需要删除后重新添加，名字和图标才会更新；普通网页
-   刷新后立即生效。
-6. 已有的部署升级后要先跑一次 `npm run db:init`，否则缺 `branding` 表，
-   设置页保存会失败。
+```bash
+npm run pair
+# 输出配对码，以及把它写进远端 D1 的 wrangler 命令；执行打印出的命令
+```
 
-## 设计要点
+然后在设备上的「设置 → 中继」填入配对码。token 只保存在客户端，中继只存 SHA-256。撤销方式、分页兜底规则和完整接口契约见 [`relay/README.md`](relay/README.md)。
 
-- **本地优先**：所有读写先落本地库，同步是后台行为，不阻塞交互。
-- **中继可选**：不连接中继时就是纯本地单机应用；连上中继后才有跨端同步。
-- **行级 LWW + HLC**：同一行以 HLC 较大者为准，服务端只做字符串比较。
-- **墓碑删除**：删除是标记而非物理删除。
-- **typed 校验**：服务端认识 `lists` / `tasks`，非法数据 400 不落库；同时对未知字段宽容，旧客户端不会被新服务端打死。
+<details>
+<summary>自定义实例名称和图标</summary>
 
-## 许可
+自托管的实例可以换成自己的应用名和图标，所有连接的设备都会看到：
+
+1. 配对后在「设置 → 实例品牌」里改名称、选内置图标或上传自己的图片。
+2. 上传的图片会先在浏览器里缩成 512×512 PNG 再上传；中继只保存这一张。
+3. 未配对时也可以在 `relay/wrangler.toml` 的 `[vars]` 里设置 `APP_NAME`；设置页保存过之后以 D1 为准，再改 `APP_NAME` 不会覆盖。
+4. 已经添加到主屏幕的 PWA 需要删除后重新添加，名称和图标才会更新；普通网页刷新即可。
+5. 内置图标包括签名火漆（默认）、火漆印、笔记本、纸与丝带、珐琅勾，以及可调色的经典对勾。
+
+</details>
+
+## 数据与备份
+
+> [!WARNING]
+> IndexedDB 是本地唯一的一份。清理站点数据、浏览器回收空间或 iOS 长期不用，都可能让它消失。
+
+- 启动时会尝试申请持久化存储，浏览器可以拒绝；设置页能看到当前状态。
+- 「设置 → 本地数据」可以导出 JSON 备份，包含列表和任务（含删除墓碑），不含配对 token；导入恢复尚未实现。
+- 开了同步时中继上还有一份；纯本地使用请定期导出。
+
+## 测试与 CI
+
+- relay 测试用 Node 内置 `node:sqlite` 执行真实 `schema.sql`；`relay/src/e2e.test.ts` 走完整 HTTP 层：配对、两台客户端 push/pull、LWW、墓碑、分页、401。
+- CI 依次执行 typecheck、test、`npm audit --omit=dev --audit-level=high` 和 build。
+
+## 边界
+
+明确不做：多用户与共享列表、提醒与通知、日历集成、附件、评论、活动流、手动主题切换、托管服务。完整范围与已知限制见 [`docs/SPEC.md`](docs/SPEC.md)。
+
+更多文档：
+
+- [`docs/SPEC.md`](docs/SPEC.md) —— 产品规格、数据模型、同步规则、验收
+- [`relay/README.md`](relay/README.md) —— 中继接口契约、部署与配对
+- [`docs/HARDENING.md`](docs/HARDENING.md) —— 加固记录与真机验收清单
+- [`AGENTS.md`](AGENTS.md) —— 给协作者的项目约定
+
+---
 
 Apache-2.0，见 [LICENSE](LICENSE)。名称和图标不在许可证授权范围内；fork 请改名。
-
-## 声明
 
 Tada 是一个独立的开源项目，受 Wunderlist 启发，与 Microsoft Corporation 无关联，也未获其背书或赞助。Wunderlist 是 Microsoft Corporation 的商标。
