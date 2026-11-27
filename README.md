@@ -17,7 +17,9 @@
 > [!IMPORTANT]
 > **This project ships source code only; there is no hosted service.** Deploy it yourself — one relay serves exactly one person.
 
-Lists, tasks, subtasks, Today, All, and search, plus an optional multi-device sync. Anything that needs another person or a background push — collaboration, sharing, reminders, activity feeds — has been deliberately left out.
+Lists, tasks, subtasks, Today, All, and search, plus an optional multi-device sync — inspired by Wunderlist's core list-and-task experience. Anything that needs another person or a background push — collaboration, sharing, reminders, activity feeds — has been deliberately left out.
+
+> **Coming from Microsoft To Do?** Microsoft is retiring To Do, and personal accounts get no official replacement. Tada is a self-hosted option — no account, no subscription — but reminders and notifications are deliberately out of scope, and there is no To Do import yet.
 
 ## Features
 
@@ -168,4 +170,4 @@ More documentation (written in Chinese):
 
 Apache-2.0, see [LICENSE](LICENSE). The name and icons are not covered by the license; forks should rename.
 
-Tada is an independent open-source project inspired by Wunderlist. It is not affiliated with, endorsed, or sponsored by Microsoft Corporation. Wunderlist is a trademark of Microsoft Corporation.
+Tada is an independent open-source project inspired by Wunderlist. It is not affiliated with, endorsed, or sponsored by Microsoft Corporation. Wunderlist and Microsoft To Do are trademarks of Microsoft Corporation.

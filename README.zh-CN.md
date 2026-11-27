@@ -17,7 +17,9 @@
 > [!IMPORTANT]
 > **本项目只提供源码，不提供托管服务。** 想用请自行部署；一个中继只服务一个人。
 
-列表、任务、子任务、今天、全部、搜索，外加一套可选的多端同步。需要别人参与或需要后台推送的东西——协作、共享、提醒、活动流——都被刻意拿掉了。
+列表、任务、子任务、今天、全部、搜索，外加一套可选的多端同步。受 Wunderlist 的清单与任务体验启发，但需要别人参与或需要后台推送的东西——协作、共享、提醒、活动流——都被刻意拿掉了。
+
+> **从 Microsoft To Do 过来？** 微软正在停用 To Do，个人账号没有官方替代品。Tada 是一个自托管的选择——不需要账号、不用订阅——但提醒和通知被刻意拿掉了，目前也还没有 To Do 导入。
 
 ## 功能
 
@@ -167,4 +169,4 @@ npm run pair                  # 执行打印出的 wrangler 命令，然后在�
 
 Apache-2.0，见 [LICENSE](LICENSE)。名称和图标不在许可证授权范围内；fork 请改名。
 
-Tada 是一个独立的开源项目，受 Wunderlist 启发，与 Microsoft Corporation 无关联，也未获其背书或赞助。Wunderlist 是 Microsoft Corporation 的商标。
+Tada 是一个独立的开源项目，受 Wunderlist 启发，与 Microsoft Corporation 无关联，也未获其背书或赞助。Wunderlist 和 Microsoft To Do 是 Microsoft Corporation 的商标。
