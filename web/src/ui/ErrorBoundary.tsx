@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { getCachedBranding } from '../lib/branding';
+import { subscribeLang, t } from '../lib/i18n';
 
 interface ErrorBoundaryState {
   error: Error | null;
@@ -15,8 +16,20 @@ interface ErrorBoundaryState {
 export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryState> {
   state: ErrorBoundaryState = { error: null };
 
+  private unsubscribeLang: (() => void) | null = null;
+
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
     return { error };
+  }
+
+  componentDidMount(): void {
+    // class 组件用不了 hook：语言切换时手动重渲染兜底页
+    this.unsubscribeLang = subscribeLang(() => this.forceUpdate());
+  }
+
+  componentWillUnmount(): void {
+    this.unsubscribeLang?.();
+    this.unsubscribeLang = null;
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
@@ -30,12 +43,10 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
     return (
       <div className="splash">
         <div className="brand">{getCachedBranding().appName}</div>
-        <p className="splash-title">界面遇到了一点问题</p>
-        <p className="splash-hint">
-          本地数据仍然保存在这台设备上。重新加载通常就能恢复；如果反复出现，请重新加载后到设置导出一份备份再反馈。
-        </p>
+        <p className="splash-title">{t('errors.boundaryTitle')}</p>
+        <p className="splash-hint">{t('errors.boundaryHint')}</p>
         <button type="button" className="btn" onClick={() => window.location.reload()}>
-          重新加载
+          {t('common.reload')}
         </button>
       </div>
     );

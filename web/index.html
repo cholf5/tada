@@ -14,8 +14,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Tada</title>
-    <!-- 首屏绘制前套用手动选择的日间/夜间，避免闪一下系统配色。
-         键名与 web/src/lib/theme.ts 的 STORAGE_KEY 保持一致。 -->
+    <!-- 首屏绘制前套用手动选择的日间/夜间和界面语言。
+         键名与 web/src/lib/theme.ts、web/src/lib/i18n.ts 保持一致。 -->
     <script>
       (function () {
         try {
@@ -23,8 +23,13 @@
           if (mode === 'light' || mode === 'dark') {
             document.documentElement.setAttribute('data-theme', mode);
           }
+          var lang = localStorage.getItem('tada.lang');
+          if (lang === 'system' || lang === null) {
+            lang = /^zh/i.test(navigator.language || '') ? 'zh' : 'en';
+          }
+          document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
         } catch (error) {
-          /* localStorage 不可用时退回 CSS 的「跟随系统」 */
+          /* localStorage 不可用时退回 CSS 的「跟随系统」与浏览器语言 */
         }
       })();
     </script>

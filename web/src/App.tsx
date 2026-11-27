@@ -3,7 +3,9 @@ import { bootstrap } from './db/bootstrap';
 import type { RepoDeps } from './db/repo';
 import { createDb, setMeta, type TadaDb } from './db/schema';
 import { useBranding } from './hooks/useBranding';
+import { useI18n } from './hooks/useI18n';
 import { initBranding } from './lib/branding';
+import type { MessageKey } from './lib/i18n';
 import { requestPersistentStorage, type PersistStatus } from './lib/storage';
 import { createHttpTransport, pairDevice } from './sync/api';
 import { SyncEngine, type SyncSnapshot } from './sync/engine';
@@ -16,10 +18,11 @@ interface BootState {
 }
 
 export default function App() {
+  const { t } = useI18n();
   const [boot, setBoot] = useState<BootState | null>(null);
   const [bootError, setBootError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<MessageKey | null>(null);
   const [sync, setSync] = useState<SyncSnapshot>({ status: 'unpaired', lastError: null });
   const [storageStatus, setStorageStatus] = useState<PersistStatus>('unsupported');
   const initRef = useRef(false);
@@ -42,7 +45,7 @@ export default function App() {
           clock: result.clock,
           transport: createHttpTransport(),
           onUnauthorized: () => {
-            setNotice('凭证失效，请重新配对');
+            setNotice('app.sessionExpired');
             setToken(null);
           },
         });
@@ -88,10 +91,10 @@ export default function App() {
     return (
       <div className="splash">
         <div className="brand">{branding.appName}</div>
-        <p className="splash-title">无法打开本地数据库</p>
+        <p className="splash-title">{t('app.dbOpenFailed')}</p>
         <p className="splash-hint">{bootError}</p>
         <button type="button" className="btn" onClick={() => window.location.reload()}>
-          重新加载
+          {t('common.reload')}
         </button>
       </div>
     );
@@ -101,7 +104,7 @@ export default function App() {
     return (
       <div className="splash">
         <div className="brand">{branding.appName}</div>
-        <p className="splash-hint">正在加载本地数据…</p>
+        <p className="splash-hint">{t('app.loading')}</p>
       </div>
     );
   }
@@ -114,7 +117,7 @@ export default function App() {
       sync={sync}
       token={token}
       connected={token !== null}
-      notice={notice}
+      notice={notice ? t(notice) : null}
       storageStatus={storageStatus}
       onPair={handlePair}
       onUnpair={() => {

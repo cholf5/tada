@@ -1,3 +1,5 @@
+import { getLang, translate, type Lang } from './i18n';
+
 /** 本地日期（YYYY-MM-DD），dueAt 统一用这个格式 */
 export function todayIso(now: Date = new Date()): string {
   return toIsoDate(now);
@@ -27,24 +29,44 @@ function parts(iso: string): { year: number; month: number; day: number } | null
   return { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
 }
 
-/** 截止日期 chip 的文案：今天 / 明天 / 昨天 / 3月8日 / 2027年1月1日 */
-export function formatDue(dueAt: string, today: string = todayIso()): string {
-  if (dueAt === today) return '今天';
-  if (dueAt === shiftIsoDate(today, 1)) return '明天';
-  if (dueAt === shiftIsoDate(today, -1)) return '昨天';
+/**
+ * 截止日期 chip 的文案：
+ * 中文 今天 / 明天 / 昨天 / 3月8日 / 2027年1月1日
+ * 英文 Today / Tomorrow / Yesterday / Mar 8 / Jan 1, 2027
+ */
+export function formatDue(
+  dueAt: string,
+  today: string = todayIso(),
+  lang: Lang = getLang(),
+): string {
+  if (dueAt === today) return translate(lang, 'dates.today');
+  if (dueAt === shiftIsoDate(today, 1)) return translate(lang, 'dates.tomorrow');
+  if (dueAt === shiftIsoDate(today, -1)) return translate(lang, 'dates.yesterday');
 
   const p = parts(dueAt);
   if (!p) return dueAt;
   const currentYear = Number(today.slice(0, 4));
+
+  if (lang === 'en') {
+    return formatEnDate(p.year, p.month, p.day, p.year !== currentYear);
+  }
   if (p.year !== currentYear) return `${p.year}年${p.month}月${p.day}日`;
   return `${p.month}月${p.day}日`;
 }
 
-export function formatLastSync(iso: string | null): string {
-  if (!iso) return '尚未同步';
+/** 英文日期：同年省略年份，保持 chip 紧凑。 */
+function formatEnDate(year: number, month: number, day: number, withYear: boolean): string {
+  const date = new Date(year, month - 1, day);
+  return withYear
+    ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export function formatLastSync(iso: string | null, lang: Lang = getLang()): string {
+  if (!iso) return translate(lang, 'dates.neverSynced');
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '尚未同步';
-  return date.toLocaleString('zh-CN', {
+  if (Number.isNaN(date.getTime())) return translate(lang, 'dates.neverSynced');
+  return date.toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
     month: 'numeric',
     day: 'numeric',
     hour: '2-digit',

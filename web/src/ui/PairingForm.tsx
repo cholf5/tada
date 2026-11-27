@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useI18n } from '../hooks/useI18n';
 import { ApiError, UnauthorizedError } from '../sync/api';
 
 /** 设置页里的「连接中继」表单。不连接中继时应用照常本地使用。 */
@@ -9,6 +10,7 @@ export function PairingForm({
   initialDeviceName: string;
   onPair: (code: string, deviceName: string) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [code, setCode] = useState('');
   const [deviceName, setDeviceName] = useState(initialDeviceName);
   const [busy, setBusy] = useState(false);
@@ -25,11 +27,11 @@ export function PairingForm({
     const trimmedName = deviceName.trim();
 
     if (trimmedCode.length < 6) {
-      setError('请输入完整的配对码');
+      setError(t('pairing.codeRequired'));
       return;
     }
     if (!trimmedName) {
-      setError('请填写设备名');
+      setError(t('pairing.nameRequired'));
       return;
     }
 
@@ -39,11 +41,13 @@ export function PairingForm({
       await onPair(trimmedCode, trimmedName);
     } catch (err) {
       if (err instanceof UnauthorizedError) {
-        setError('配对码无效或已过期');
+        setError(t('pairing.codeInvalid'));
       } else if (err instanceof ApiError) {
-        setError(err.status === 0 ? err.message : `连接失败（HTTP ${err.status}）`);
+        setError(
+          err.status === 0 ? err.message : t('pairing.httpError', { status: err.status }),
+        );
       } else {
-        setError('连接失败，请重试');
+        setError(t('pairing.failed'));
       }
     } finally {
       setBusy(false);
@@ -53,11 +57,11 @@ export function PairingForm({
   return (
     <form className="pairing-form relay-form" onSubmit={submit}>
       <label>
-        配对码
+        {t('pairing.code')}
         <input
           value={code}
           onChange={(event) => setCode(event.target.value.toUpperCase())}
-          placeholder="例如 A1B2C3D4E5"
+          placeholder={t('pairing.codePlaceholder')}
           autoCapitalize="characters"
           autoComplete="off"
           spellCheck={false}
@@ -67,7 +71,7 @@ export function PairingForm({
       </label>
 
       <label>
-        设备名
+        {t('pairing.deviceName')}
         <input
           value={deviceName}
           onChange={(event) => setDeviceName(event.target.value)}
@@ -79,7 +83,7 @@ export function PairingForm({
       {error ? <div className="form-error">{error}</div> : null}
 
       <button type="submit" className="btn primary block" disabled={busy}>
-        {busy ? '正在连接…' : '连接中继'}
+        {busy ? t('pairing.connecting') : t('pairing.connect')}
       </button>
     </form>
   );

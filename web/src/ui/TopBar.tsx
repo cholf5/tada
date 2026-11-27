@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import { useI18n } from '../hooks/useI18n';
 import type { SyncSnapshot } from '../sync/engine';
 import { Icon } from './icons';
 import { SyncBadge } from './SyncBadge';
@@ -18,9 +19,15 @@ export function TopBar({
   sync: SyncSnapshot;
   onSyncNow: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <header className="topbar">
-      <button type="button" className="icon-btn menu-btn" aria-label="打开菜单" onClick={onMenu}>
+      <button
+        type="button"
+        className="icon-btn menu-btn"
+        aria-label={t('topbar.openMenu')}
+        onClick={onMenu}
+      >
         <Icon name="menu" />
       </button>
 
@@ -31,8 +38,8 @@ export function TopBar({
           type="search"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="搜索任务…"
-          aria-label="搜索任务"
+          placeholder={t('topbar.searchPlaceholder')}
+          aria-label={t('topbar.search')}
           onKeyDown={(event) => {
             if (event.key === 'Escape') {
               onSearchChange('');
@@ -44,7 +51,7 @@ export function TopBar({
           <button
             type="button"
             className="icon-btn tiny"
-            aria-label="清空搜索"
+            aria-label={t('topbar.clearSearch')}
             onClick={() => onSearchChange('')}
           >
             <Icon name="close" size={14} />

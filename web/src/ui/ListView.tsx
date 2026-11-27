@@ -5,6 +5,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-ki
 import { byOrderKey, tasksInList } from '../db/repo';
 import type { ListRow, TaskRow } from '../db/schema';
 import { useLive } from '../hooks/useLive';
+import { useI18n } from '../hooks/useI18n';
 import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { LIST_COLORS, listColor } from '../lib/colors';
 import type { AppActions } from '../state/actions';
@@ -34,6 +35,7 @@ export function ListView({
   subtaskCounts?: SubtaskCounts;
   onDeleted: () => void;
 }) {
+  const { t } = useI18n();
   const tasks = useLive(() => tasksInList(db, list.id, false), [db, list.id]) ?? [];
   const doneTasks = useLive(() => tasksInList(db, list.id, true), [db, list.id]) ?? [];
 
@@ -68,7 +70,7 @@ export function ListView({
   };
 
   const handleDeleteList = () => {
-    if (!window.confirm(`删除列表「${list.name}」？列表内的任务会一起隐藏。`)) return;
+    if (!window.confirm(t('list.deleteConfirm', { name: list.name }))) return;
     void actions.deleteList(list.id).then(() => onDeleted());
   };
 
@@ -86,7 +88,7 @@ export function ListView({
             className="list-title-input"
             defaultValue={list.name}
             maxLength={LIMITS.listName}
-            aria-label="列表名称"
+            aria-label={t('common.listName')}
             onBlur={(event) => {
               const value = event.currentTarget.value.trim();
               if (!value) {
@@ -105,33 +107,38 @@ export function ListView({
               }
             }}
           />
-          <span className="view-count">{tasks.length} 个未完成</span>
+          <span className="view-count">{t('all.count', { count: tasks.length })}</span>
         </div>
 
         <div className="header-actions" ref={paletteRef}>
           <button
             type="button"
             className="icon-btn"
-            aria-label="修改列表颜色"
+            aria-label={t('list.changeColor')}
             aria-expanded={paletteOpen}
             onClick={() => setPaletteOpen((open) => !open)}
           >
             <span className="color-swatch" style={{ background: listColor(list.color) }} />
           </button>
-          <button type="button" className="icon-btn" aria-label="删除列表" onClick={handleDeleteList}>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={t('list.delete')}
+            onClick={handleDeleteList}
+          >
             <Icon name="trash" size={18} />
           </button>
 
           {paletteOpen ? (
-            <div className="palette" role="group" aria-label="列表颜色">
+            <div className="palette" role="group" aria-label={t('list.colorGroup')}>
               {LIST_COLORS.map((color) => (
                 <button
-                  key={color.label}
+                  key={color.labelKey}
                   type="button"
                   className={`palette-swatch${color.value === list.color ? ' is-active' : ''}`}
                   style={{ background: color.value ?? 'var(--dot-default)' }}
-                  aria-label={color.label}
-                  title={color.label}
+                  aria-label={t(color.labelKey)}
+                  title={t(color.labelKey)}
                   onClick={() => {
                     setPaletteOpen(false);
                     void actions.setListColor(list.id, color.value);
@@ -146,10 +153,7 @@ export function ListView({
       <QuickAdd listId={list.id} actions={actions} />
 
       {tasks.length === 0 && doneTasks.length === 0 ? (
-        <EmptyState
-          title="这个列表还没有任务"
-          hint="在上面的输入框写点什么，回车就能创建。"
-        />
+        <EmptyState title={t('list.emptyTitle')} hint={t('list.emptyHint')} />
       ) : (
         <DndContext
           id="tasks-in-list"
@@ -179,7 +183,7 @@ export function ListView({
       {sortedDone.length > 0 ? (
         <details className="completed-section">
           <summary>
-            已完成
+            {t('nav.completed')}
             <span className="badge-count">{sortedDone.length}</span>
           </summary>
           <ul className="task-list">

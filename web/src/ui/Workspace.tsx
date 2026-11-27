@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { liveLists, type RepoDeps } from '../db/repo';
 import type { TadaDb, TaskRow } from '../db/schema';
 import { useLive } from '../hooks/useLive';
+import { useI18n } from '../hooks/useI18n';
 import { useSubtaskCounts } from '../hooks/useSubtaskCounts';
 import type { PersistStatus } from '../lib/storage';
 import type { SyncEngine, SyncSnapshot } from '../sync/engine';
@@ -43,6 +44,7 @@ export function Workspace({
   onPair: (code: string, deviceName: string) => Promise<void>;
   onUnpair: () => void;
 }) {
+  const { t } = useI18n();
   const actions = useActions(deps, engine);
 
   const lists = useLive(() => liveLists(db), [db]) ?? [];
@@ -199,11 +201,11 @@ export function Workspace({
       if (!list) {
         return (
           <EmptyState
-            title="列表不存在"
-            hint="它可能已在其他设备上删除。"
+            title={t('list.missingTitle')}
+            hint={t('list.missingHint')}
             action={
               <button type="button" className="btn" onClick={() => navigate({ kind: 'today' })}>
-                回到今天
+                {t('list.backToToday')}
               </button>
             }
           />
@@ -270,7 +272,7 @@ export function Workspace({
       <button
         type="button"
         className={`drawer-backdrop${drawerOpen ? ' is-open' : ''}`}
-        aria-label="关闭菜单"
+        aria-label={t('common.closeMenu')}
         onClick={() => setDrawerOpen(false)}
       />
 
@@ -315,6 +317,7 @@ function NoListsView({
   actions: AppActions;
   onCreated: (id: string) => void;
 }) {
+  const { t } = useI18n();
   const [name, setName] = useState('');
 
   const submit = async (event: FormEvent) => {
@@ -328,19 +331,19 @@ function NoListsView({
 
   return (
     <EmptyState
-      title="还没有列表"
-      hint="列表用来收纳任务，先创建一个吧。"
+      title={t('empty.noListsTitle')}
+      hint={t('empty.noListsHint')}
       action={
         <form className="empty-form" onSubmit={submit}>
           <input
             value={name}
             maxLength={LIMITS.listName}
             onChange={(event) => setName(event.target.value)}
-            placeholder="列表名称"
-            aria-label="列表名称"
+            placeholder={t('common.listName')}
+            aria-label={t('common.listName')}
           />
           <button type="submit" className="btn primary">
-            新建列表
+            {t('sidebar.newList')}
           </button>
         </form>
       }

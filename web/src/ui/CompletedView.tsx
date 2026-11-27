@@ -1,4 +1,5 @@
 import { useLive } from '../hooks/useLive';
+import { useI18n } from '../hooks/useI18n';
 import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import type { TadaDb, ListRow } from '../db/schema';
 import { EmptyState } from './EmptyState';
@@ -16,6 +17,7 @@ export function CompletedView({
   handlers: TaskHandlers;
   subtaskCounts?: SubtaskCounts;
 }) {
+  const { t } = useI18n();
   const tasks =
     useLive(async () => {
       const rows = await db.tasks
@@ -34,12 +36,12 @@ export function CompletedView({
   return (
     <section className="view">
       <header className="view-header">
-        <h1 className="view-title">已完成</h1>
-        <span className="view-count">{tasks.length} 个</span>
+        <h1 className="view-title">{t('nav.completed')}</h1>
+        <span className="view-count">{t('completed.count', { count: tasks.length })}</span>
       </header>
 
       {tasks.length === 0 ? (
-        <EmptyState title="还没有已完成的任务" hint="完成的任务会归档到这里，可以随时恢复。" />
+        <EmptyState title={t('completed.emptyTitle')} hint={t('completed.emptyHint')} />
       ) : (
         <ul className="task-list">
           {tasks.map((task) => (
@@ -48,7 +50,7 @@ export function CompletedView({
               task={task}
               lists={lists}
               showList
-              listName={names.get(task.listId) ?? '未知列表'}
+              listName={names.get(task.listId) ?? t('common.unknownList')}
               subtaskCounts={subtaskCounts}
               onToggle={handlers.onToggle}
               onOpen={handlers.onOpen}

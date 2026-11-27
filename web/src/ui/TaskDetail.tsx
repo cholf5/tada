@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { subtasksOf } from '../db/repo';
 import type { ListRow, TaskRow, TadaDb } from '../db/schema';
 import { useLive } from '../hooks/useLive';
+import { useI18n } from '../hooks/useI18n';
 import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import type { AppActions } from '../state/actions';
 import { confirmPendingSubtasks } from './taskHandlers';
@@ -27,6 +28,7 @@ export function TaskDetail({
   onOpenTask: (id: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const titleRef = useRef<HTMLInputElement | null>(null);
   const notesRef = useRef<HTMLTextAreaElement | null>(null);
   const subtaskInputRef = useRef<HTMLInputElement | null>(null);
@@ -109,7 +111,11 @@ export function TaskDetail({
   };
 
   const handleDelete = () => {
-    if (window.confirm(isSubtask ? '删除这个子任务？' : '删除这项任务及其子任务？')) {
+    if (
+      window.confirm(
+        isSubtask ? t('detail.deleteSubtaskConfirm') : t('detail.deleteTaskConfirm'),
+      )
+    ) {
       void actions.deleteTask(task.id);
       onClose();
     }
@@ -127,19 +133,26 @@ export function TaskDetail({
         className="modal"
         role="dialog"
         aria-modal="true"
-        aria-label="任务详情"
+        aria-label={t('detail.dialogLabel')}
         onClick={(event) => event.stopPropagation()}
       >
         <header className="modal-header">
-          <span className="modal-title">{isSubtask ? '子任务' : '任务详情'}</span>
-          <button type="button" className="icon-btn" aria-label="关闭" onClick={onClose}>
+          <span className="modal-title">
+            {isSubtask ? t('detail.subtaskTitle') : t('detail.title')}
+          </span>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={t('common.close')}
+            onClick={onClose}
+          >
             <Icon name="close" size={18} />
           </button>
         </header>
 
         {isSubtask ? (
           <div className="detail-parent">
-            <span>父任务</span>
+            <span>{t('detail.parent')}</span>
             {parent && parent.deleted === 0 ? (
               <button
                 type="button"
@@ -149,7 +162,7 @@ export function TaskDetail({
                 {parent.title}
               </button>
             ) : (
-              <span className="detail-parent-missing">已删除</span>
+              <span className="detail-parent-missing">{t('detail.parentDeleted')}</span>
             )}
           </div>
         ) : null}
@@ -159,7 +172,7 @@ export function TaskDetail({
           className="detail-title"
           defaultValue={task.title}
           maxLength={LIMITS.taskTitle}
-          aria-label="任务标题"
+          aria-label={t('task.titleLabel')}
           onChange={() => {
             titleDirty.current = true;
           }}
@@ -176,9 +189,9 @@ export function TaskDetail({
           ref={notesRef}
           className="detail-notes"
           defaultValue={task.notes ?? ''}
-          placeholder="备注…"
+          placeholder={t('detail.notesPlaceholder')}
           maxLength={LIMITS.taskNotes}
-          aria-label="备注"
+          aria-label={t('detail.notes')}
           rows={4}
           onChange={() => {
             notesDirty.current = true;
@@ -189,7 +202,7 @@ export function TaskDetail({
         {isSubtask ? null : (
           <section className="detail-subtasks">
             <div className="subtasks-header">
-              <span>子任务</span>
+              <span>{t('detail.subtasks')}</span>
               {subtasks.length > 0 ? (
                 <span className="badge-count">
                   {doneCount}/{subtasks.length}
@@ -212,7 +225,9 @@ export function TaskDetail({
                           void actions.setTaskDone(subtask.id, subtask.done === 0);
                         }}
                         aria-label={
-                          subtask.done === 1 ? '标记子任务为未完成' : '标记子任务为完成'
+                          subtask.done === 1
+                            ? t('detail.markSubtaskUndone')
+                            : t('detail.markSubtaskDone')
                         }
                       />
                       <span className="checkmark" aria-hidden="true">
@@ -231,9 +246,13 @@ export function TaskDetail({
                     <button
                       type="button"
                       className="icon-btn tiny subtask-remove"
-                      aria-label="删除子任务"
+                      aria-label={t('detail.deleteSubtask')}
                       onClick={() => {
-                        if (window.confirm(`删除子任务「${subtask.title}」？`)) {
+                        if (
+                          window.confirm(
+                            t('detail.deleteSubtaskConfirmNamed', { title: subtask.title }),
+                          )
+                        ) {
                           void actions.deleteTask(subtask.id);
                         }
                       }}
@@ -251,12 +270,12 @@ export function TaskDetail({
                 value={subtaskTitle}
                 maxLength={LIMITS.taskTitle}
                 onChange={(event) => setSubtaskTitle(event.target.value)}
-                placeholder="添加子任务，回车创建"
-                aria-label="添加子任务"
+                placeholder={t('detail.addSubtaskPlaceholder')}
+                aria-label={t('detail.addSubtask')}
                 autoComplete="off"
               />
               <button type="submit" className="btn">
-                添加
+                {t('common.add')}
               </button>
             </form>
           </section>
@@ -265,7 +284,7 @@ export function TaskDetail({
         {isSubtask ? null : (
           <div className="detail-grid">
             <label className="detail-field">
-              <span>截止日期</span>
+              <span>{t('detail.dueDate')}</span>
               <input
                 type="date"
                 value={task.dueAt ?? ''}
@@ -276,7 +295,7 @@ export function TaskDetail({
             </label>
 
             <label className="detail-field">
-              <span>所属列表</span>
+              <span>{t('detail.list')}</span>
               <select
                 value={task.listId}
                 onChange={(event) => {
@@ -295,14 +314,14 @@ export function TaskDetail({
 
         <footer className="modal-footer">
           <button type="button" className="btn danger" onClick={handleDelete}>
-            删除
+            {t('common.delete')}
           </button>
           <button
             type="button"
             className="btn"
             onClick={handleToggleDone}
           >
-            {task.done === 1 ? '标记为未完成' : '标记为完成'}
+            {task.done === 1 ? t('task.markUndone') : t('task.markDone')}
           </button>
         </footer>
       </div>

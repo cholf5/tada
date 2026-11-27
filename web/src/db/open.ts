@@ -1,3 +1,5 @@
+import { t } from '../lib/i18n';
+
 /** 打开 IndexedDB 的超时上限。 */
 export const DB_OPEN_TIMEOUT_MS = 15_000;
 
@@ -25,11 +27,7 @@ export async function openWithTimeout(
 
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
-      reject(
-        new DatabaseOpenError(
-          '本地数据库打开超时：可能被其他 Tada 标签页占用。请关闭其他标签页后重试。',
-        ),
-      );
+      reject(new DatabaseOpenError(t('errors.dbLocked')));
     }, timeoutMs);
   });
 

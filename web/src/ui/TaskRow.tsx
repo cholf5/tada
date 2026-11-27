@@ -8,6 +8,7 @@ import {
 import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core';
 import { LIMITS } from '@tada/shared';
 import type { ListRow, TaskRow as Row } from '../db/schema';
+import { useI18n } from '../hooks/useI18n';
 import { useToday } from '../hooks/useToday';
 import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { listColor } from '../lib/colors';
@@ -64,6 +65,7 @@ export function TaskRow({
   onMove,
   onDelete,
 }: TaskRowProps) {
+  const { t, lang } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
   const [editingTitle, setEditingTitle] = useState(false);
   const [draftTitle, setDraftTitle] = useState(task.title);
@@ -128,8 +130,8 @@ export function TaskRow({
         <button
           type="button"
           className="drag-handle"
-          title="拖拽排序"
-          aria-label="拖拽排序"
+          title={t('task.drag')}
+          aria-label={t('task.drag')}
           {...dragHandleProps?.attributes}
           {...dragHandleProps?.listeners}
         >
@@ -142,7 +144,7 @@ export function TaskRow({
           type="checkbox"
           checked={task.done === 1}
           onChange={() => onToggle(task)}
-          aria-label={task.done === 1 ? '标记为未完成' : '标记为完成'}
+          aria-label={task.done === 1 ? t('task.markUndone') : t('task.markDone')}
         />
         <span className="checkmark" aria-hidden="true">
           <Icon name="check" size={12} />
@@ -156,7 +158,7 @@ export function TaskRow({
             value={draftTitle}
             autoFocus
             maxLength={LIMITS.taskTitle}
-            aria-label="任务标题"
+            aria-label={t('task.titleLabel')}
             onChange={(event) => setDraftTitle(event.target.value)}
             onPointerDown={(event) => event.stopPropagation()}
             onBlur={() => {
@@ -186,7 +188,7 @@ export function TaskRow({
         )}
         <div className="task-meta">
           {parentName ? (
-            <span className="parent-tag" title={`所属父任务：${parentName}`}>
+            <span className="parent-tag" title={t('task.parentTooltip', { name: parentName })}>
               ↳ {parentName}
             </span>
           ) : null}
@@ -194,7 +196,10 @@ export function TaskRow({
           {subtaskSummary && subtaskSummary.total > 0 ? (
             <span
               className={`subtask-chip${subtasksComplete ? ' is-complete' : ''}`}
-              title={`子任务 ${subtaskSummary.done}/${subtaskSummary.total} 已完成`}
+              title={t('task.subtaskProgress', {
+                done: subtaskSummary.done,
+                total: subtaskSummary.total,
+              })}
             >
               <Icon name="list" size={12} />
               {subtaskSummary.done}/{subtaskSummary.total}
@@ -203,7 +208,7 @@ export function TaskRow({
           {task.dueAt ? (
             <span className={`due-chip${overdue ? ' is-overdue' : ''}`}>
               <Icon name="calendar" size={12} />
-              {formatDue(task.dueAt, today)}
+              {formatDue(task.dueAt, today, lang)}
             </span>
           ) : null}
           {task.notes ? (
@@ -218,7 +223,7 @@ export function TaskRow({
         <button
           type="button"
           className="icon-btn small"
-          aria-label="更多操作"
+          aria-label={t('task.more')}
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
         >
@@ -238,12 +243,12 @@ export function TaskRow({
                 setEditingTitle(true);
               }}
             >
-              重命名
+              {t('task.rename')}
             </button>
             <div className="menu-divider" />
             {moveTargets.length > 0 ? (
               <>
-                <div className="menu-label">移动到</div>
+                <div className="menu-label">{t('task.moveTo')}</div>
                 {moveTargets.map((list) => (
                   <button
                     key={list.id}
@@ -270,7 +275,7 @@ export function TaskRow({
                 onDelete(task);
               }}
             >
-              删除任务
+              {t('task.delete')}
             </button>
           </div>
         ) : null}

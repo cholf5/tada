@@ -1,15 +1,18 @@
+import { useI18n } from '../hooks/useI18n';
+import { t as translateNow, type MessageKey } from '../lib/i18n';
 import type { SyncSnapshot, SyncStatus } from '../sync/engine';
 
-const LABELS: Record<SyncStatus, string> = {
-  unpaired: '仅本机',
-  offline: '离线',
-  syncing: '同步中',
-  synced: '已同步',
-  error: '同步失败',
+const LABEL_KEYS: Record<SyncStatus, MessageKey> = {
+  unpaired: 'sync.unpaired',
+  offline: 'sync.offline',
+  syncing: 'sync.syncing',
+  synced: 'sync.synced',
+  error: 'sync.error',
 };
 
+/** 非组件代码取同步状态文案；组件内请用 useI18n。 */
 export function splitSyncLabel(status: SyncStatus): string {
-  return LABELS[status];
+  return translateNow(LABEL_KEYS[status]);
 }
 
 export function SyncBadge({
@@ -19,8 +22,11 @@ export function SyncBadge({
   sync: SyncSnapshot;
   onClick?: () => void;
 }) {
-  const label = LABELS[sync.status];
-  const title = sync.lastError ? `${label}：${sync.lastError}` : label;
+  const { t } = useI18n();
+  const label = t(LABEL_KEYS[sync.status]);
+  const title = sync.lastError
+    ? t('sync.tooltip', { label, error: sync.lastError })
+    : label;
 
   const content = (
     <>

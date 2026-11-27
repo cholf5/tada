@@ -5,6 +5,8 @@
  * 缩放全部放在保存前的浏览器里完成，中继只存一张 512×512 的 PNG。
  */
 
+import { t } from './i18n';
+
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const TARGET_SIZE = 512;
 const BASE64_CHUNK = 0x8000;
@@ -14,14 +16,14 @@ const MAX_ICON_BYTES = 512 * 1024;
 
 export async function resizeToPngBase64(file: File): Promise<string> {
   if (file.size > MAX_FILE_BYTES) {
-    throw new Error('图片不能超过 5 MB');
+    throw new Error(t('errors.imageTooLarge'));
   }
 
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file);
   } catch {
-    throw new Error('无法读取图片');
+    throw new Error(t('errors.readImage'));
   }
 
   try {
@@ -30,7 +32,7 @@ export async function resizeToPngBase64(file: File): Promise<string> {
     canvas.height = TARGET_SIZE;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('当前浏览器不支持图片处理');
+    if (!ctx) throw new Error(t('errors.unsupportedImage'));
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
@@ -72,7 +74,7 @@ export async function svgToPngBase64(svg: string): Promise<string> {
     canvas.height = TARGET_SIZE;
 
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('当前浏览器不支持图片处理');
+    if (!ctx) throw new Error(t('errors.unsupportedImage'));
 
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
@@ -90,13 +92,13 @@ export async function fetchPngBase64(url: string): Promise<string> {
   try {
     response = await fetch(url);
   } catch {
-    throw new Error('无法读取内置图标');
+    throw new Error(t('errors.readBuiltin'));
   }
-  if (!response.ok) throw new Error('无法读取内置图标');
+  if (!response.ok) throw new Error(t('errors.readBuiltin'));
 
   const bytes = new Uint8Array(await response.arrayBuffer());
   if (bytes.byteLength > MAX_ICON_BYTES) {
-    throw new Error('内置图标超过 512 KiB');
+    throw new Error(t('errors.builtinTooLarge'));
   }
   return bytesToBase64(bytes);
 }
@@ -105,7 +107,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error('无法生成图标'));
+    image.onerror = () => reject(new Error(t('errors.generateIcon')));
     image.src = url;
   });
 }
@@ -116,7 +118,7 @@ function toPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
       if (blob) {
         resolve(blob);
       } else {
-        reject(new Error('无法生成图标'));
+        reject(new Error(t('errors.generateIcon')));
       }
     }, 'image/png');
   });
@@ -125,7 +127,7 @@ function toPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 async function blobToBase64(blob: Blob): Promise<string> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   if (bytes.byteLength > MAX_ICON_BYTES) {
-    throw new Error('生成的图标超过 512 KiB，请换一张更简单的图片');
+    throw new Error(t('errors.iconTooLarge'));
   }
   return bytesToBase64(bytes);
 }

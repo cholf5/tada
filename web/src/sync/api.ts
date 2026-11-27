@@ -6,6 +6,7 @@ import type {
   WireChange,
 } from '@tada/shared';
 import type { BrandingState } from '../lib/branding';
+import { t } from '../lib/i18n';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -32,7 +33,7 @@ export const REQUEST_TIMEOUT_MS = 30_000;
  * 清 token 回配对页。
  */
 export class RequestTimeoutError extends ApiError {
-  constructor(message = '请求超时，请检查网络后重试') {
+  constructor(message = t('errors.timeout')) {
     super(message, 0);
     this.name = 'RequestTimeoutError';
   }
@@ -130,7 +131,7 @@ async function call<T>(
     res = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch (error) {
     if (isAbort(error)) throw new RequestTimeoutError();
-    throw new ApiError('无法连接服务器，请检查网络', 0);
+    throw new ApiError(t('errors.network'), 0);
   }
 
   if (res.status === 401) throw new UnauthorizedError();

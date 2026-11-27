@@ -3,6 +3,7 @@ import enamelPng from '../assets/brand-icons/enamel.png';
 import notebookPng from '../assets/brand-icons/notebook.png';
 import ribbonPng from '../assets/brand-icons/ribbon.png';
 import sealPng from '../assets/brand-icons/seal.png';
+import type { MessageKey } from './i18n';
 
 /**
  * 内置图标：材质类图标在构建时已经烘焙成 512 PNG，选择后走与上传图标
@@ -21,8 +22,8 @@ export type BuiltinIconId =
 
 export interface BuiltinIcon {
   id: BuiltinIconId;
-  label: string;
-  hint?: string;
+  labelKey: MessageKey;
+  hintKey?: MessageKey;
   kind: 'default' | 'asset' | 'classic';
   /** 预览图；classic 由 UI 用当前颜色生成 */
   preview: string;
@@ -33,43 +34,43 @@ export interface BuiltinIcon {
 export const BUILTIN_ICONS: BuiltinIcon[] = [
   {
     id: 'signet',
-    label: '签名火漆',
-    hint: '默认',
+    labelKey: 'branding.label.signet',
+    hintKey: 'branding.hint.default',
     kind: 'default',
     preview: '/icons/icon-192.png',
   },
   {
     id: 'seal',
-    label: '火漆印',
+    labelKey: 'branding.label.seal',
     kind: 'asset',
     preview: sealPng,
     pngUrl: sealPng,
   },
   {
     id: 'notebook',
-    label: '笔记本',
+    labelKey: 'branding.label.notebook',
     kind: 'asset',
     preview: notebookPng,
     pngUrl: notebookPng,
   },
   {
     id: 'ribbon',
-    label: '纸与丝带',
+    labelKey: 'branding.label.ribbon',
     kind: 'asset',
     preview: ribbonPng,
     pngUrl: ribbonPng,
   },
   {
     id: 'enamel',
-    label: '珐琅勾',
+    labelKey: 'branding.label.enamel',
     kind: 'asset',
     preview: enamelPng,
     pngUrl: enamelPng,
   },
   {
     id: 'classic',
-    label: '经典对勾',
-    hint: '可改色',
+    labelKey: 'branding.label.classic',
+    hintKey: 'branding.hint.classic',
     kind: 'classic',
     preview: '',
   },
@@ -86,11 +87,11 @@ export const CLASSIC_DEFAULT: ClassicColors = {
 };
 
 /** 第一版里那四个同形状、不同配色的版本，合并成色板。 */
-export const CLASSIC_PRESETS: { label: string; colors: ClassicColors }[] = [
-  { label: '金底墨勾', colors: { plate: '#F5B400', mark: '#17181C' } },
-  { label: '深蓝金勾', colors: { plate: '#16213E', mark: '#F5B400' } },
-  { label: '品牌蓝金勾', colors: { plate: '#2563EB', mark: '#F5B400' } },
-  { label: '品牌蓝白勾', colors: { plate: '#2563EB', mark: '#FFFFFF' } },
+export const CLASSIC_PRESETS: { labelKey: MessageKey; colors: ClassicColors }[] = [
+  { labelKey: 'branding.preset.goldInk', colors: { plate: '#F5B400', mark: '#17181C' } },
+  { labelKey: 'branding.preset.navyGold', colors: { plate: '#16213E', mark: '#F5B400' } },
+  { labelKey: 'branding.preset.blueGold', colors: { plate: '#2563EB', mark: '#F5B400' } },
+  { labelKey: 'branding.preset.blueWhite', colors: { plate: '#2563EB', mark: '#FFFFFF' } },
 ];
 
 /** 与第一版 A 相同的对勾，按墨迹包围盒居中到 1024 画布。 */

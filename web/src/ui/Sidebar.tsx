@@ -10,16 +10,18 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { ListRow } from '../db/schema';
 import { useBranding } from '../hooks/useBranding';
+import { useI18n } from '../hooks/useI18n';
 import { brandIconUrl } from '../lib/branding';
 import { listColor } from '../lib/colors';
+import type { MessageKey } from '../lib/i18n';
 import type { View } from '../state/view';
 import { Icon, type IconName } from './icons';
 import { useSortableSensors } from './useSortableSensors';
 
-const NAV: { view: View; label: string; icon: IconName }[] = [
-  { view: { kind: 'today' }, label: '今天', icon: 'sun' },
-  { view: { kind: 'all' }, label: '全部', icon: 'inbox' },
-  { view: { kind: 'completed' }, label: '已完成', icon: 'check' },
+const NAV: { view: View; labelKey: MessageKey; icon: IconName }[] = [
+  { view: { kind: 'today' }, labelKey: 'nav.today', icon: 'sun' },
+  { view: { kind: 'all' }, labelKey: 'nav.all', icon: 'inbox' },
+  { view: { kind: 'completed' }, labelKey: 'nav.completed', icon: 'check' },
 ];
 
 /** 侧栏里的单个列表：整行可拖拽，点击仍然是导航。 */
@@ -83,6 +85,7 @@ export function Sidebar({
   onNewList: (name: string) => void;
   onReorderList: (id: string, previousKey: string | null, nextKey: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [newListName, setNewListName] = useState('');
   const sensors = useSortableSensors();
   const draggedRef = useRef(false);
@@ -112,7 +115,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className={`sidebar${open ? ' is-open' : ''}`} aria-label="导航">
+    <aside className={`sidebar${open ? ' is-open' : ''}`} aria-label={t('sidebar.nav')}>
       <div className="brand">
         <span className="brand-mark" aria-hidden="true">
           <img
@@ -133,21 +136,21 @@ export function Sidebar({
           const active = view.kind === item.view.kind;
           return (
             <button
-              key={item.label}
+              key={item.labelKey}
               type="button"
               className={`sidebar-item${active ? ' is-active' : ''}`}
               aria-current={active ? 'page' : undefined}
               onClick={() => onNavigate(item.view)}
             >
               <Icon name={item.icon} size={18} />
-              <span className="list-name">{item.label}</span>
+              <span className="list-name">{t(item.labelKey)}</span>
             </button>
           );
         })}
       </nav>
 
       <div className="divider" />
-      <div className="section-label">列表</div>
+      <div className="section-label">{t('sidebar.lists')}</div>
 
       <DndContext
         id="sidebar-lists"
@@ -189,8 +192,8 @@ export function Sidebar({
           value={newListName}
           maxLength={LIMITS.listName}
           onChange={(event) => setNewListName(event.target.value)}
-          placeholder="新建列表"
-          aria-label="新建列表"
+          placeholder={t('sidebar.newList')}
+          aria-label={t('sidebar.newList')}
           autoComplete="off"
         />
       </form>
@@ -203,7 +206,7 @@ export function Sidebar({
           onClick={() => onNavigate({ kind: 'settings' })}
         >
           <Icon name="settings" size={18} />
-          <span className="list-name">设置</span>
+          <span className="list-name">{t('nav.settings')}</span>
         </button>
       </div>
     </aside>

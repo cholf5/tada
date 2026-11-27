@@ -58,7 +58,7 @@ relay/         schema.sql  wrangler.toml
 web/src/       db/（Dexie、repo、outbox、backup）
                sync/（engine、push、pull、lww、clock、api）
                ui/（Workspace、Sidebar、各视图、TaskDetail、SettingsView、BrandingCard）
-               lib/（branding、builtinIcons、iconResize、dates、colors、storage）
+               lib/（branding、builtinIcons、iconResize、dates、colors、storage、i18n）
                state/ hooks/
 docs/          SPEC.md（需求来源） HARDENING.md（加固记录 + 真机清单）
                FIX-ROUND*.md（历史轮次） REVIEW-WEB.md（复核清单）
@@ -133,6 +133,7 @@ CI（`.github/workflows/ci.yml`）还要跑 `npm audit --omit=dev --audit-level=
 | 品牌 | 中继侧单行配置，全实例生效；只存一张 512 PNG，浏览器端缩放 |
 | PWA 身份 | manifest `id` 固定 `/`，不随品牌变化 |
 | 主题 | 默认跟随系统；设置里可手动锁定日间 / 夜间，选择只存本机 |
+| 语言 | 只做中文 / English；默认跟随浏览器语言，可手动选择，选择只存本机 |
 
 ## 文档约定
 

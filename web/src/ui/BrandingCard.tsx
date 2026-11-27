@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useBranding } from '../hooks/useBranding';
+import { useI18n } from '../hooks/useI18n';
 import {
   BUILTIN_ICONS,
   CLASSIC_DEFAULT,
@@ -11,6 +12,7 @@ import {
   type BuiltinIconId,
 } from '../lib/builtinIcons';
 import { applyBrandingToDocument, brandIconUrl, setCachedBranding } from '../lib/branding';
+import { t } from '../lib/i18n';
 import {
   fetchPngBase64,
   resizeToPngBase64,
@@ -26,6 +28,7 @@ import { ApiError, postBranding, type BrandingPayload } from '../sync/api';
  * `/api/branding` 接口。这样 API、D1 和单租户边界都不用动。
  */
 export function BrandingCard({ token }: { token: string }) {
+  const { t: tr } = useI18n();
   const branding = useBranding();
   const [name, setName] = useState(branding.appName);
   const [pendingIcon, setPendingIcon] = useState<string | null>(null);
@@ -83,7 +86,7 @@ export function BrandingCard({ token }: { token: string }) {
           setPendingPreset(null);
           setPendingIcon(null);
           setPreviewUrl(null);
-          setError(err instanceof Error ? err.message : '无法生成图标');
+          setError(err instanceof Error ? err.message : tr('branding.errorGenerate'));
         })
         .finally(() => {
           if (request === requestRef.current) setIconBusy(false);
@@ -109,7 +112,7 @@ export function BrandingCard({ token }: { token: string }) {
       setPendingIcon(data);
       setPreviewUrl(URL.createObjectURL(file));
     } catch (err) {
-      setError(err instanceof Error ? err.message : '无法读取图片');
+      setError(err instanceof Error ? err.message : tr('branding.errorReadImage'));
     } finally {
       setIconBusy(false);
       // 允许再次选择同一个文件
@@ -155,7 +158,7 @@ export function BrandingCard({ token }: { token: string }) {
       if (request !== requestRef.current) return;
       setPendingPreset(null);
       setPreviewUrl(null);
-      setError(err instanceof Error ? err.message : '无法读取内置图标');
+      setError(err instanceof Error ? err.message : tr('branding.errorReadBuiltin'));
     } finally {
       if (request === requestRef.current) setIconBusy(false);
     }
@@ -180,7 +183,7 @@ export function BrandingCard({ token }: { token: string }) {
     const payload: BrandingPayload = {};
     if (trimmed !== branding.appName) {
       if (!trimmed) {
-        setError('应用名称不能为空');
+        setError(tr('branding.nameEmpty'));
         return;
       }
       payload.appName = trimmed;
@@ -246,44 +249,47 @@ export function BrandingCard({ token }: { token: string }) {
     <div className="settings-card">
       <div className="setting-row">
         <div>
-          <div className="setting-label">实例品牌</div>
-          <div className="setting-hint">
-            名称和图标保存在中继上，对所有连接的设备生效；离线设备下次连接后更新。
-          </div>
+          <div className="setting-label">{tr('branding.title')}</div>
+          <div className="setting-hint">{tr('branding.hint')}</div>
         </div>
         <div className="setting-control">
           <input
             value={name}
-            aria-label="应用名称"
+            aria-label={tr('branding.appName')}
             maxLength={40}
             onChange={(event) => setName(event.target.value)}
           />
-          {saved ? <span className="saved-hint">已保存</span> : null}
+          {saved ? <span className="saved-hint">{tr('common.saved')}</span> : null}
         </div>
       </div>
 
       <div className="setting-row is-stacked">
         <div className="brand-head">
           <div>
-            <div className="setting-label">应用图标</div>
-            <div className="setting-hint">
-              选一个内置图标，或上传自己的正方形图片；保存时会转成 512×512 PNG
-              存到中继。经典对勾可以改底色和图形颜色。
-            </div>
-            {hasPending ? <div className="setting-hint">新图标将在保存后生效</div> : null}
+            <div className="setting-label">{tr('branding.icon')}</div>
+            <div className="setting-hint">{tr('branding.iconHint')}</div>
+            {hasPending ? (
+              <div className="setting-hint">{tr('branding.pendingHint')}</div>
+            ) : null}
             {error ? <div className="form-error">{error}</div> : null}
           </div>
           <div className="brand-current">
             <img
               className="brand-preview"
               src={previewUrl ?? currentIconUrl}
-              alt="应用图标预览"
+              alt={tr('branding.iconPreview')}
             />
-            <span className="setting-hint">{hasPending ? '预览' : '当前'}</span>
+            <span className="setting-hint">
+              {hasPending ? tr('branding.preview') : tr('branding.current')}
+            </span>
           </div>
         </div>
 
-        <div className="brand-presets" role="group" aria-label="内置图标">
+        <div
+          className="brand-presets"
+          role="group"
+          aria-label={tr('branding.builtinGroup')}
+        >
           {BUILTIN_ICONS.map((preset) => {
             const active = pendingPreset === preset.id;
             const preview =
@@ -302,8 +308,8 @@ export function BrandingCard({ token }: { token: string }) {
                 }}
               >
                 <img src={preview} alt="" />
-                <span>{preset.label}</span>
-                {preset.hint ? <em>{preset.hint}</em> : null}
+                <span>{tr(preset.labelKey)}</span>
+                {preset.hintKey ? <em>{tr(preset.hintKey)}</em> : null}
               </button>
             );
           })}
@@ -313,40 +319,44 @@ export function BrandingCard({ token }: { token: string }) {
           <div className="brand-classic">
             <div className="brand-colors">
               <label className="brand-color">
-                底色
+                {tr('branding.plate')}
                 <input
                   type="color"
                   value={classicPlate}
-                  aria-label="经典对勾底色"
+                  aria-label={tr('branding.plateAria')}
                   onChange={(event) => updateClassic(event.target.value, classicMark)}
                 />
               </label>
               <label className="brand-color">
-                图形
+                {tr('branding.mark')}
                 <input
                   type="color"
                   value={classicMark}
-                  aria-label="经典对勾图形颜色"
+                  aria-label={tr('branding.markAria')}
                   onChange={(event) => updateClassic(classicPlate, event.target.value)}
                 />
               </label>
               <button type="button" className="btn" onClick={swapClassic}>
-                交换
+                {tr('branding.swap')}
               </button>
             </div>
 
-            <div className="brand-swatches" role="group" aria-label="经典对勾配色">
+            <div
+              className="brand-swatches"
+              role="group"
+              aria-label={tr('branding.paletteGroup')}
+            >
               {CLASSIC_PRESETS.map((item) => {
                 const active =
                   item.colors.plate.toLowerCase() === classicPlate.toLowerCase() &&
                   item.colors.mark.toLowerCase() === classicMark.toLowerCase();
                 return (
                   <button
-                    key={item.label}
+                    key={item.labelKey}
                     type="button"
                     className={`brand-swatch${active ? ' is-active' : ''}`}
-                    title={item.label}
-                    aria-label={item.label}
+                    title={tr(item.labelKey)}
+                    aria-label={tr(item.labelKey)}
                     aria-pressed={active}
                     onClick={() => updateClassic(item.colors.plate, item.colors.mark)}
                   >
@@ -362,8 +372,8 @@ export function BrandingCard({ token }: { token: string }) {
             <div
               className={`setting-hint${classicContrast < 3 ? ' brand-warning' : ''}`}
             >
-              底色和图形颜色的对比度是 {classicContrast.toFixed(1)}:1
-              {classicContrast < 3 ? '，小尺寸可能看不清。' : '。'}
+              {tr('branding.contrast', { ratio: classicContrast.toFixed(1) })}
+              {classicContrast < 3 ? tr('branding.contrastLow') : tr('branding.contrastOk')}
             </div>
           </div>
         ) : null}
@@ -373,7 +383,7 @@ export function BrandingCard({ token }: { token: string }) {
             type="file"
             className="brand-file"
             accept="image/png,image/jpeg,image/webp"
-            aria-label="选择应用图标"
+            aria-label={tr('branding.chooseIcon')}
             disabled={saving}
             onChange={(event) => {
               void chooseIcon(event);
@@ -381,7 +391,7 @@ export function BrandingCard({ token }: { token: string }) {
           />
           {hasPending ? (
             <button type="button" className="btn" onClick={clearPending}>
-              取消选择
+              {tr('branding.cancel')}
             </button>
           ) : null}
           {branding.hasCustomIcon ? (
@@ -393,7 +403,7 @@ export function BrandingCard({ token }: { token: string }) {
                 void restoreDefaultIcon();
               }}
             >
-              恢复默认图标
+              {tr('branding.restoreDefault')}
             </button>
           ) : null}
           <button
@@ -404,15 +414,17 @@ export function BrandingCard({ token }: { token: string }) {
               void save();
             }}
           >
-            {saving ? '保存中…' : iconBusy ? '生成中…' : '保存'}
+            {saving
+              ? tr('branding.saving')
+              : iconBusy
+                ? tr('branding.generating')
+                : tr('branding.save')}
           </button>
         </div>
       </div>
 
       <div className="setting-row">
-        <div className="setting-hint">
-          已添加到主屏幕的应用需要删除后重新添加，名字和图标才会更新。
-        </div>
+        <div className="setting-hint">{tr('branding.homeScreenHint')}</div>
       </div>
     </div>
   );
@@ -420,9 +432,9 @@ export function BrandingCard({ token }: { token: string }) {
 
 function describeBrandingError(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 401) return '凭证失效，请重新配对';
-    if (error.status === 0) return '无法连接服务器';
-    if (error.status === 400) return '名称或图片不符合要求';
+    if (error.status === 401) return t('branding.errorUnauthorized');
+    if (error.status === 0) return t('branding.errorNetwork');
+    if (error.status === 400) return t('branding.errorInvalid');
   }
-  return error instanceof Error ? error.message : '保存失败';
+  return error instanceof Error ? error.message : t('branding.errorSave');
 }

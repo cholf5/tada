@@ -1,6 +1,7 @@
 import { byOrderKey, liveLists } from '../db/repo';
 import type { TadaDb, ListRow, TaskRow } from '../db/schema';
 import { useLive } from '../hooks/useLive';
+import { useI18n } from '../hooks/useI18n';
 import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { listColor } from '../lib/colors';
 import { EmptyState } from './EmptyState';
@@ -18,6 +19,7 @@ export function AllView({
   handlers: TaskHandlers;
   subtaskCounts?: SubtaskCounts;
 }) {
+  const { t } = useI18n();
   const tasks =
     useLive(async () => {
       const [currentLists, rows] = await Promise.all([
@@ -42,12 +44,12 @@ export function AllView({
   return (
     <section className="view">
       <header className="view-header">
-        <h1 className="view-title">全部</h1>
-        <span className="view-count">{tasks.length} 个未完成</span>
+        <h1 className="view-title">{t('nav.all')}</h1>
+        <span className="view-count">{t('all.count', { count: tasks.length })}</span>
       </header>
 
       {tasks.length === 0 ? (
-        <EmptyState title="没有未完成的任务" hint="所有事情都处理完了，或者还没有开始。" />
+        <EmptyState title={t('all.emptyTitle')} hint={t('all.emptyHint')} />
       ) : (
         <div className="groups">
           {lists.map((list) => {

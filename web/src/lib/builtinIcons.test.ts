@@ -49,11 +49,11 @@ describe('内置图标', () => {
 
   it('第一版的四个配色收敛成色板', () => {
     expect(CLASSIC_PRESETS).toHaveLength(4);
-    expect(CLASSIC_PRESETS.map((item) => item.label)).toEqual([
-      '金底墨勾',
-      '深蓝金勾',
-      '品牌蓝金勾',
-      '品牌蓝白勾',
+    expect(CLASSIC_PRESETS.map((item) => item.labelKey)).toEqual([
+      'branding.preset.goldInk',
+      'branding.preset.navyGold',
+      'branding.preset.blueGold',
+      'branding.preset.blueWhite',
     ]);
   });
 

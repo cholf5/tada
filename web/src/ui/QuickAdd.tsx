@@ -1,5 +1,6 @@
 import { LIMITS } from '@tada/shared';
 import { useRef, useState, type FormEvent } from 'react';
+import { useI18n } from '../hooks/useI18n';
 import type { AppActions } from '../state/actions';
 import { Icon } from './icons';
 
@@ -11,6 +12,7 @@ export function QuickAdd({
   listId: string;
   actions: AppActions;
 }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -33,8 +35,8 @@ export function QuickAdd({
         value={title}
         maxLength={LIMITS.taskTitle}
         onChange={(event) => setTitle(event.target.value)}
-        placeholder="添加任务，回车创建"
-        aria-label="添加任务"
+        placeholder={t('quickAdd.placeholder')}
+        aria-label={t('quickAdd.aria')}
         autoComplete="off"
       />
     </form>

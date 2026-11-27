@@ -2,8 +2,15 @@ import { useEffect, useState } from 'react';
 import { backupFilename, createBackup } from '../db/backup';
 import { clearQuarantine } from '../db/outbox';
 import { getMeta, setMeta, type TadaDb } from '../db/schema';
+import { useI18n } from '../hooks/useI18n';
 import { useLive } from '../hooks/useLive';
 import { formatLastSync } from '../lib/dates';
+import {
+  readStoredLangMode,
+  setLangMode as applyLangMode,
+  type LangMode,
+  type MessageKey,
+} from '../lib/i18n';
 import type { PersistStatus } from '../lib/storage';
 import { readStoredThemeMode, setThemeMode, type ThemeMode } from '../lib/theme';
 import type { SyncEngine, SyncSnapshot } from '../sync/engine';
@@ -11,10 +18,17 @@ import { BrandingCard } from './BrandingCard';
 import { PairingForm } from './PairingForm';
 import { SyncBadge } from './SyncBadge';
 
-const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
-  { value: 'system', label: '跟随系统' },
-  { value: 'light', label: '日间' },
-  { value: 'dark', label: '夜间' },
+const THEME_OPTIONS: { value: ThemeMode; labelKey: MessageKey }[] = [
+  { value: 'system', labelKey: 'theme.system' },
+  { value: 'light', labelKey: 'theme.light' },
+  { value: 'dark', labelKey: 'theme.dark' },
+];
+
+/** 语言名称按惯例用各自的语言写，不随界面语言变化 */
+const LANG_OPTIONS: { value: LangMode; labelKey: MessageKey | null; label: string }[] = [
+  { value: 'system', labelKey: 'settings.langSystem', label: '' },
+  { value: 'zh', labelKey: null, label: '中文' },
+  { value: 'en', labelKey: null, label: 'English' },
 ];
 
 export function SettingsView({
@@ -38,6 +52,7 @@ export function SettingsView({
   onPair: (code: string, deviceName: string) => Promise<void>;
   onUnpair: () => void;
 }) {
+  const { t, lang } = useI18n();
   const storedName = useLive(async () => (await getMeta(db, 'deviceName')) ?? '', [db]) ?? '';
   const lastSyncedAt =
     useLive(async () => (await getMeta(db, 'lastSyncedAt')) ?? null, [db]) ?? null;
@@ -50,10 +65,16 @@ export function SettingsView({
   const [reseeded, setReseeded] = useState<number | null>(null);
   const [exported, setExported] = useState<string | null>(null);
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => readStoredThemeMode());
+  const [langMode, setLangModeState] = useState<LangMode>(() => readStoredLangMode());
 
   const changeTheme = (mode: ThemeMode) => {
     setThemeModeState(mode);
     setThemeMode(mode);
+  };
+
+  const changeLanguage = (mode: LangMode) => {
+    setLangModeState(mode);
+    applyLangMode(mode);
   };
 
   useEffect(() => {
@@ -78,11 +99,7 @@ export function SettingsView({
   }, [saved]);
 
   const handleUnpair = () => {
-    if (
-      window.confirm(
-        '解除配对？本地数据会保留，之后仍可照常使用；重新配对后才能继续多端同步。',
-      )
-    ) {
+    if (window.confirm(t('settings.unpairConfirm'))) {
       onUnpair();
     }
   };
@@ -107,10 +124,10 @@ export function SettingsView({
 
   const persistenceHint =
     storageStatus === 'granted'
-      ? '已申请持久化存储，浏览器会尽量保留本地数据。仍建议定期导出备份。'
+      ? t('settings.persistenceGranted')
       : storageStatus === 'denied'
-        ? '浏览器未授予持久化存储：清理站点数据或空间紧张时可能丢失。请定期导出备份。'
-        : '当前浏览器不支持持久化申请。清理站点数据会丢失本地数据，请定期导出备份。';
+        ? t('settings.persistenceDenied')
+        : t('settings.persistenceUnsupported');
 
   const handleExport = async () => {
     const backup = await createBackup(db);
@@ -132,7 +149,7 @@ export function SettingsView({
   return (
     <section className="view">
       <header className="view-header">
-        <h1 className="view-title">设置</h1>
+        <h1 className="view-title">{t('nav.settings')}</h1>
       </header>
 
       {notice ? <div className="banner warning settings-banner">{notice}</div> : null}
@@ -140,13 +157,15 @@ export function SettingsView({
       <div className="settings-card">
         <div className="setting-row">
           <div>
-            <div className="setting-label">外观</div>
-            <div className="setting-hint">
-              「跟随系统」随设备自动切换；手动选择只影响这台设备。
-            </div>
+            <div className="setting-label">{t('settings.appearance')}</div>
+            <div className="setting-hint">{t('settings.appearanceHint')}</div>
           </div>
           <div className="setting-control">
-            <div className="theme-switch" role="group" aria-label="外观模式">
+            <div
+              className="theme-switch"
+              role="group"
+              aria-label={t('settings.themeGroup')}
+            >
               {THEME_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -154,7 +173,7 @@ export function SettingsView({
                   aria-pressed={themeMode === option.value}
                   onClick={() => changeTheme(option.value)}
                 >
-                  {option.label}
+                  {t(option.labelKey)}
                 </button>
               ))}
             </div>
@@ -165,19 +184,46 @@ export function SettingsView({
       <div className="settings-card">
         <div className="setting-row">
           <div>
-            <div className="setting-label">本地数据</div>
+            <div className="setting-label">{t('settings.language')}</div>
+            <div className="setting-hint">{t('settings.languageHint')}</div>
+          </div>
+          <div className="setting-control">
+            <div
+              className="theme-switch"
+              role="group"
+              aria-label={t('settings.languageGroup')}
+            >
+              {LANG_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={langMode === option.value}
+                  onClick={() => changeLanguage(option.value)}
+                >
+                  {option.labelKey ? t(option.labelKey) : option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-card">
+        <div className="setting-row">
+          <div>
+            <div className="setting-label">{t('settings.localData')}</div>
             <div className="setting-hint">{persistenceHint}</div>
           </div>
           <div className="setting-control">
             <button type="button" className="btn" onClick={() => void handleExport()}>
-              导出备份
+              {t('settings.export')}
             </button>
           </div>
         </div>
         <div className="setting-row">
           <div className="setting-hint">
-            备份是 JSON 文件，包含列表和任务（含已删除墓碑），不包含配对 token。
-            {exported ? ` 已导出 ${exported}` : ''}
+            {t('settings.backupHint')}
+            {exported ? ` ${t('settings.exported', { file: exported })}` : ''}
           </div>
         </div>
       </div>
@@ -186,15 +232,13 @@ export function SettingsView({
         <div className="settings-card">
           <div className="setting-row">
             <div>
-              <div className="setting-label">设备名</div>
-              <div className="setting-hint">
-                配对时登记到中继；连接后修改只影响本机显示，不会更新服务端记录。
-              </div>
+              <div className="setting-label">{t('settings.deviceName')}</div>
+              <div className="setting-hint">{t('settings.deviceNameHint')}</div>
             </div>
             <div className="setting-control">
               <input
                 value={name}
-                aria-label="设备名"
+                aria-label={t('settings.deviceName')}
                 maxLength={64}
                 onChange={(event) => setName(event.target.value)}
                 onBlur={() => void saveName()}
@@ -205,7 +249,7 @@ export function SettingsView({
                   }
                 }}
               />
-              {saved ? <span className="saved-hint">已保存</span> : null}
+              {saved ? <span className="saved-hint">{t('common.saved')}</span> : null}
             </div>
           </div>
         </div>
@@ -216,11 +260,11 @@ export function SettingsView({
       <div className="settings-card">
         <div className="setting-row">
           <div>
-            <div className="setting-label">中继</div>
+            <div className="setting-label">{t('settings.relay')}</div>
             <div className="setting-hint">
               {connected
-                ? (sync.lastError ?? '已连接，多端同步在后台进行。')
-                : '未连接。数据只保存在这台设备上，连接后可多端同步。'}
+                ? (sync.lastError ?? t('settings.relayConnected'))
+                : t('settings.relayDisconnected')}
             </div>
           </div>
           <div className="setting-control">
@@ -231,21 +275,23 @@ export function SettingsView({
         {connected ? (
           <>
             <div className="setting-row">
-              <div className="setting-label">上次同步</div>
-              <div className="setting-value">{formatLastSync(lastSyncedAt)}</div>
+              <div className="setting-label">{t('settings.lastSync')}</div>
+              <div className="setting-value">{formatLastSync(lastSyncedAt, lang)}</div>
             </div>
 
             <div className="setting-row">
-              <div className="setting-label">待同步改动</div>
-              <div className="setting-value">{pending} 条</div>
+              <div className="setting-label">{t('settings.pending')}</div>
+              <div className="setting-value">
+                {t('settings.pendingCount', { count: pending })}
+              </div>
             </div>
 
             {quarantined > 0 ? (
               <div className="setting-row">
                 <div>
-                  <div className="setting-label">不合法数据</div>
+                  <div className="setting-label">{t('settings.quarantined')}</div>
                   <div className="setting-hint">
-                    {quarantined} 条数据不合法，已跳过。数据仍保留在本地，修正后会重新同步。
+                    {t('settings.quarantinedHint', { count: quarantined })}
                   </div>
                 </div>
                 <div className="setting-control">
@@ -256,14 +302,14 @@ export function SettingsView({
                       void clearQuarantine(db);
                     }}
                   >
-                    清除提示
+                    {t('settings.clearQuarantine')}
                   </button>
                 </div>
               </div>
             ) : null}
 
             <div className="setting-row">
-              <div className="setting-label">同步游标</div>
+              <div className="setting-label">{t('settings.cursor')}</div>
               <div className="setting-value">{lastSeq}</div>
             </div>
           </>
@@ -271,7 +317,7 @@ export function SettingsView({
           <div className="relay-form-wrap">
             <PairingForm initialDeviceName={storedName} onPair={onPair} />
             <p className="settings-footnote relay-footnote">
-              配对码由中继一次性签发，10 分钟内有效。不连接也可以正常使用，数据只保存在本机。
+              {t('settings.pairingFootnote')}
             </p>
           </div>
         )}
@@ -288,7 +334,7 @@ export function SettingsView({
                 void engine.syncNow();
               }}
             >
-              {sync.status === 'syncing' ? '同步中…' : '立即同步'}
+              {sync.status === 'syncing' ? t('settings.syncing') : t('settings.syncNow')}
             </button>
             <button
               type="button"
@@ -298,17 +344,16 @@ export function SettingsView({
                 void handleReseed();
               }}
             >
-              {reseeded !== null ? `已加入 ${reseeded} 条` : '重新上传本地数据'}
+              {reseeded !== null
+                ? t('settings.reseedDone', { count: reseeded })
+                : t('settings.reseed')}
             </button>
             <button type="button" className="btn danger-outline" onClick={handleUnpair}>
-              解除配对
+              {t('settings.unpair')}
             </button>
           </div>
 
-          <p className="settings-footnote">
-            「重新上传本地数据」会把本地所有未删除的行重新排队推送，用于换到一台空服务器后补推。
-            解除配对只清除本机的 token；任务数据仍保留在本地与中继上。
-          </p>
+          <p className="settings-footnote">{t('settings.reseedFootnote')}</p>
         </>
       ) : null}
     </section>

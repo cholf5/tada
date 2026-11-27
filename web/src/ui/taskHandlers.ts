@@ -1,6 +1,7 @@
 import type { TaskRow } from '../db/schema';
 import type { SubtaskSummary } from '../hooks/useSubtaskCounts';
 import type { AppActions } from '../state/actions';
+import { t } from '../lib/i18n';
 
 export interface TaskHandlers {
   onToggle(task: TaskRow): void;
@@ -32,7 +33,7 @@ export function confirmPendingSubtasks(
 ): boolean {
   const remaining = pendingSubtasks(task, summary);
   if (remaining === 0) return true;
-  return window.confirm(`还有 ${remaining} 个未完成的子任务，一并标记为完成？`);
+  return window.confirm(t('detail.cascadeConfirm', { count: remaining }));
 }
 
 export function makeTaskHandlers(
@@ -55,7 +56,7 @@ export function makeTaskHandlers(
       void actions.moveTask(task.id, listId);
     },
     onDelete: (task) => {
-      if (window.confirm(`删除任务「${task.title}」？`)) {
+      if (window.confirm(t('task.deleteConfirm', { title: task.title }))) {
         void actions.deleteTask(task.id);
       }
     },

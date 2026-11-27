@@ -1,4 +1,5 @@
 import { useLive } from '../hooks/useLive';
+import { useI18n } from '../hooks/useI18n';
 import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { useToday } from '../hooks/useToday';
 import type { TadaDb, ListRow, TaskRow } from '../db/schema';
@@ -18,6 +19,7 @@ export function TodayView({
   handlers: TaskHandlers;
   subtaskCounts?: SubtaskCounts;
 }) {
+  const { t } = useI18n();
   const today = useToday();
   const tasks =
     useLive(async () => {
@@ -42,20 +44,17 @@ export function TodayView({
   return (
     <section className="view">
       <header className="view-header">
-        <h1 className="view-title">今天</h1>
-        <span className="view-count">{tasks.length} 个到期</span>
+        <h1 className="view-title">{t('nav.today')}</h1>
+        <span className="view-count">{t('today.count', { count: tasks.length })}</span>
       </header>
 
       {tasks.length === 0 ? (
-        <EmptyState
-          title="今天没有到期的任务"
-          hint="给任务设置截止日期，它就会出现在这里。"
-        />
+        <EmptyState title={t('today.emptyTitle')} hint={t('today.emptyHint')} />
       ) : (
         <div className="groups">
           {overdue.length > 0 ? (
             <TaskGroup
-              title="逾期"
+              title={t('today.overdue')}
               tone="overdue"
               tasks={overdue}
               lists={lists}
@@ -66,7 +65,7 @@ export function TodayView({
           ) : null}
           {dueToday.length > 0 ? (
             <TaskGroup
-              title="今天"
+              title={t('nav.today')}
               tasks={dueToday}
               lists={lists}
               names={names}
@@ -97,6 +96,7 @@ function TaskGroup({
   subtaskCounts?: SubtaskCounts;
   tone?: 'overdue';
 }) {
+  const { t } = useI18n();
   return (
     <div className="group">
       <h2 className={`group-title${tone === 'overdue' ? ' is-overdue' : ''}`}>
@@ -110,7 +110,7 @@ function TaskGroup({
             task={task}
             lists={lists}
             showList
-            listName={names.get(task.listId) ?? '未知列表'}
+            listName={names.get(task.listId) ?? t('common.unknownList')}
             subtaskCounts={subtaskCounts}
             onToggle={handlers.onToggle}
             onOpen={handlers.onOpen}

@@ -1,6 +1,7 @@
 import type { Clock } from '../db/repo';
 import { quarantineOutboxEntry } from '../db/outbox';
 import { getMeta, setMeta, type TadaDb } from '../db/schema';
+import { t } from '../lib/i18n';
 import { UnauthorizedError, type SyncTransport } from './api';
 import { applyPushAccepted, collectPushBatch } from './push';
 import { pushWithRecovery } from './pushRecovery';
@@ -219,7 +220,7 @@ export class SyncEngine {
         } catch {
           // 清 token 失败也不影响切回配对页
         }
-        this.publish('unpaired', '凭证失效，请重新配对');
+        this.publish('unpaired', t('app.sessionExpired'));
         this.deps.onUnauthorized?.();
         return;
       }
