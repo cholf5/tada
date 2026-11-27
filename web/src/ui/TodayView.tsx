@@ -1,4 +1,5 @@
 import { useLive } from '../hooks/useLive';
+import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { useToday } from '../hooks/useToday';
 import type { TadaDb, ListRow, TaskRow } from '../db/schema';
 import { EmptyState } from './EmptyState';
@@ -10,10 +11,12 @@ export function TodayView({
   db,
   lists,
   handlers,
+  subtaskCounts,
 }: {
   db: TadaDb;
   lists: ListRow[];
   handlers: TaskHandlers;
+  subtaskCounts?: SubtaskCounts;
 }) {
   const today = useToday();
   const tasks =
@@ -23,6 +26,7 @@ export function TodayView({
           (task) =>
             task.deleted === 0 &&
             task.done === 0 &&
+            task.parentId === null &&
             task.dueAt !== null &&
             task.dueAt <= today,
         )
@@ -50,10 +54,25 @@ export function TodayView({
       ) : (
         <div className="groups">
           {overdue.length > 0 ? (
-            <TaskGroup title="逾期" tone="overdue" tasks={overdue} lists={lists} names={names} handlers={handlers} />
+            <TaskGroup
+              title="逾期"
+              tone="overdue"
+              tasks={overdue}
+              lists={lists}
+              names={names}
+              handlers={handlers}
+              subtaskCounts={subtaskCounts}
+            />
           ) : null}
           {dueToday.length > 0 ? (
-            <TaskGroup title="今天" tasks={dueToday} lists={lists} names={names} handlers={handlers} />
+            <TaskGroup
+              title="今天"
+              tasks={dueToday}
+              lists={lists}
+              names={names}
+              handlers={handlers}
+              subtaskCounts={subtaskCounts}
+            />
           ) : null}
         </div>
       )}
@@ -67,6 +86,7 @@ function TaskGroup({
   lists,
   names,
   handlers,
+  subtaskCounts,
   tone,
 }: {
   title: string;
@@ -74,6 +94,7 @@ function TaskGroup({
   lists: ListRow[];
   names: Map<string, string>;
   handlers: TaskHandlers;
+  subtaskCounts?: SubtaskCounts;
   tone?: 'overdue';
 }) {
   return (
@@ -90,6 +111,7 @@ function TaskGroup({
             lists={lists}
             showList
             listName={names.get(task.listId) ?? '未知列表'}
+            subtaskCounts={subtaskCounts}
             onToggle={handlers.onToggle}
             onOpen={handlers.onOpen}
             onMove={handlers.onMove}

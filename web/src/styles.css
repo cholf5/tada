@@ -758,6 +758,37 @@ button.sync-badge:hover {
   color: var(--text-secondary);
 }
 
+/* 搜索命中的子任务：补上父任务上下文 */
+.parent-tag {
+  max-width: 46%;
+  overflow: hidden;
+  color: var(--text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 任务行上的子任务进度：2/5 */
+.subtask-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.task-row:hover .subtask-chip {
+  background: var(--bg);
+}
+
+.subtask-chip.is-complete {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .due-chip {
   display: inline-flex;
   align-items: center;
@@ -1034,6 +1065,141 @@ button.sync-badge:hover {
 
 .detail-notes:focus {
   border-color: var(--accent);
+}
+
+/* 子任务详情里回跳父任务 */
+.detail-parent {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  text-align: left;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}
+
+.detail-parent-missing {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+/* 详情内的子任务清单 */
+.detail-subtasks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.subtasks-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.subtask-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subtask-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 4px;
+  border-radius: 8px;
+  transition: background-color var(--transition);
+}
+
+.subtask-row:hover {
+  background: var(--surface-muted);
+}
+
+.subtask-row .checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+}
+
+.subtask-row .checkmark {
+  width: 18px;
+  height: 18px;
+}
+
+.subtask-title {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: left;
+  word-break: break-word;
+  cursor: pointer;
+}
+
+.subtask-row.is-done .subtask-title {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+.subtask-remove {
+  margin-left: auto;
+  opacity: 0;
+}
+
+.subtask-row:hover .subtask-remove,
+.subtask-remove:focus-visible {
+  opacity: 0.8;
+}
+
+.subtask-add {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subtask-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+.subtask-add input:focus {
+  border-color: var(--accent);
+}
+
+.subtask-add .btn {
+  padding: 7px 12px;
+  font-size: 13px;
 }
 
 .detail-grid {
@@ -1384,6 +1550,10 @@ button.sync-badge:hover {
 /* 没有 hover 的设备（手机 / 平板）手柄常显，否则触摸用户看不到拖拽入口 */
 @media (hover: none) {
   .drag-handle {
+    opacity: 0.8;
+  }
+
+  .subtask-remove {
     opacity: 0.8;
   }
 }

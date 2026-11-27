@@ -1,4 +1,5 @@
 import type { ListRow, TaskRow } from '../db/schema';
+import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { EmptyState } from './EmptyState';
 import { TaskRow as TaskItem } from './TaskRow';
 import type { TaskHandlers } from './taskHandlers';
@@ -7,12 +8,17 @@ export function SearchResults({
   query,
   tasks,
   lists,
+  parents,
   handlers,
+  subtaskCounts,
 }: {
   query: string;
   tasks: TaskRow[];
   lists: ListRow[];
+  /** 匹配到子任务时用来补上父任务标题 */
+  parents: Record<string, string>;
   handlers: TaskHandlers;
+  subtaskCounts?: SubtaskCounts;
 }) {
   const names = new Map(lists.map((list) => [list.id, list.name] as const));
 
@@ -34,6 +40,8 @@ export function SearchResults({
               lists={lists}
               showList
               listName={names.get(task.listId) ?? '未知列表'}
+              parentName={task.parentId ? parents[task.parentId] : undefined}
+              subtaskCounts={subtaskCounts}
               onToggle={handlers.onToggle}
               onOpen={handlers.onOpen}
               onMove={handlers.onMove}

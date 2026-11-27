@@ -110,6 +110,14 @@ export class TadaDb extends Dexie {
       outbox: 'key, queuedAt',
       quarantine: 'key, quarantinedAt',
     });
+    // v3：子任务按 parentId 建索引（顶层任务 parentId 为 null，不进索引）
+    this.version(3).stores({
+      lists: 'id, orderKey',
+      tasks: 'id, listId, parentId, done, orderKey',
+      meta: 'key',
+      outbox: 'key, queuedAt',
+      quarantine: 'key, quarantinedAt',
+    });
   }
 }
 

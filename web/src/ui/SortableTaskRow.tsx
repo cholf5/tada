@@ -2,6 +2,7 @@ import type { CSSProperties, SyntheticEvent } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { ListRow, TaskRow as Row } from '../db/schema';
+import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { TaskRow } from './TaskRow';
 import type { TaskHandlers } from './taskHandlers';
 
@@ -10,10 +11,12 @@ export function SortableTaskRow({
   task,
   lists,
   handlers,
+  subtaskCounts,
 }: {
   task: Row;
   lists: ListRow[];
   handlers: TaskHandlers;
+  subtaskCounts?: SubtaskCounts;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -29,6 +32,7 @@ export function SortableTaskRow({
     <TaskRow
       task={task}
       lists={lists}
+      subtaskCounts={subtaskCounts}
       rowRef={setNodeRef}
       style={style}
       draggable

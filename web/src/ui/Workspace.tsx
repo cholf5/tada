@@ -1,8 +1,9 @@
 import { LIMITS } from '@tada/shared';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { liveLists, type RepoDeps } from '../db/repo';
-import type { TadaDb } from '../db/schema';
+import type { TadaDb, TaskRow } from '../db/schema';
 import { useLive } from '../hooks/useLive';
+import { useSubtaskCounts } from '../hooks/useSubtaskCounts';
 import type { SyncEngine, SyncSnapshot } from '../sync/engine';
 import { useActions, type AppActions } from '../state/actions';
 import type { View } from '../state/view';
@@ -36,10 +37,13 @@ export function Workspace({
   const actions = useActions(deps, engine);
 
   const lists = useLive(() => liveLists(db), [db]) ?? [];
+  const subtaskCounts = useSubtaskCounts(db);
   const counts =
     useLive(async () => {
       const rows = await db.tasks
-        .filter((task) => task.deleted === 0 && task.done === 0)
+        .filter(
+          (task) => task.deleted === 0 && task.done === 0 && task.parentId === null,
+        )
         .toArray();
       const result: Record<string, number> = {};
       for (const row of rows) result[row.listId] = (result[row.listId] ?? 0) + 1;
@@ -54,9 +58,9 @@ export function Workspace({
 
   const query = search.trim();
 
-  const searchResults =
+  const searchData =
     useLive(async () => {
-      if (!query) return [];
+      if (!query) return { tasks: [] as TaskRow[], parents: {} as Record<string, string> };
       const needle = query.toLowerCase();
       const [rows, currentLists] = await Promise.all([
         db.tasks
@@ -70,10 +74,24 @@ export function Workspace({
         liveLists(db),
       ]);
       const known = new Set(currentLists.map((list) => list.id));
-      return rows
+      const matched = rows
         .filter((task) => known.has(task.listId))
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    }, [db, query]) ?? [];
+
+      // 子任务没有列表视图作为上下文，搜索命中时补上父任务标题
+      const parentIds = [
+        ...new Set(
+          matched.map((task) => task.parentId).filter((id): id is string => id !== null),
+        ),
+      ];
+      const parentRows = parentIds.length > 0 ? await db.tasks.bulkGet(parentIds) : [];
+      const parents: Record<string, string> = {};
+      for (const parent of parentRows) {
+        if (parent && parent.deleted === 0) parents[parent.id] = parent.title;
+      }
+
+      return { tasks: matched, parents };
+    }, [db, query]) ?? { tasks: [], parents: {} };
 
   const selectedTask =
     useLive(async () => {
@@ -82,8 +100,13 @@ export function Workspace({
     }, [db, selectedTaskId]) ?? null;
 
   const handlers = useMemo(
-    () => makeTaskHandlers(actions, (task) => setSelectedTaskId(task.id)),
-    [actions],
+    () =>
+      makeTaskHandlers(
+        actions,
+        (task) => setSelectedTaskId(task.id),
+        (taskId) => subtaskCounts.get(taskId),
+      ),
+    [actions, subtaskCounts],
   );
 
   useEffect(() => {
@@ -128,9 +151,11 @@ export function Workspace({
       return (
         <SearchResults
           query={query}
-          tasks={searchResults}
+          tasks={searchData.tasks}
           lists={lists}
+          parents={searchData.parents}
           handlers={handlers}
+          subtaskCounts={subtaskCounts}
         />
       );
     }
@@ -179,20 +204,42 @@ export function Workspace({
           lists={lists}
           actions={actions}
           handlers={handlers}
+          subtaskCounts={subtaskCounts}
           onDeleted={() => navigate({ kind: 'today' })}
         />
       );
     }
 
     if (view.kind === 'all') {
-      return <AllView db={db} lists={lists} handlers={handlers} />;
+      return (
+        <AllView
+          db={db}
+          lists={lists}
+          handlers={handlers}
+          subtaskCounts={subtaskCounts}
+        />
+      );
     }
 
     if (view.kind === 'completed') {
-      return <CompletedView db={db} lists={lists} handlers={handlers} />;
+      return (
+        <CompletedView
+          db={db}
+          lists={lists}
+          handlers={handlers}
+          subtaskCounts={subtaskCounts}
+        />
+      );
     }
 
-    return <TodayView db={db} lists={lists} handlers={handlers} />;
+    return (
+      <TodayView
+        db={db}
+        lists={lists}
+        handlers={handlers}
+        subtaskCounts={subtaskCounts}
+      />
+    );
   };
 
   return (
@@ -231,9 +278,12 @@ export function Workspace({
       {selectedTask && selectedTask.deleted === 0 ? (
         <TaskDetail
           key={selectedTask.id}
+          db={db}
           task={selectedTask}
           lists={lists}
           actions={actions}
+          subtaskCounts={subtaskCounts}
+          onOpenTask={(id) => setSelectedTaskId(id)}
           onClose={() => setSelectedTaskId(null)}
         />
       ) : null}

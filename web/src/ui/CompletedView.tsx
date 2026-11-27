@@ -1,4 +1,5 @@
 import { useLive } from '../hooks/useLive';
+import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import type { TadaDb, ListRow } from '../db/schema';
 import { EmptyState } from './EmptyState';
 import { TaskRow } from './TaskRow';
@@ -8,14 +9,20 @@ export function CompletedView({
   db,
   lists,
   handlers,
+  subtaskCounts,
 }: {
   db: TadaDb;
   lists: ListRow[];
   handlers: TaskHandlers;
+  subtaskCounts?: SubtaskCounts;
 }) {
   const tasks =
     useLive(async () => {
-      const rows = await db.tasks.filter((task) => task.deleted === 0 && task.done === 1).toArray();
+      const rows = await db.tasks
+        .filter(
+          (task) => task.deleted === 0 && task.done === 1 && task.parentId === null,
+        )
+        .toArray();
       const known = new Set(lists.map((list) => list.id));
       return rows
         .filter((task) => known.has(task.listId))
@@ -42,6 +49,7 @@ export function CompletedView({
               lists={lists}
               showList
               listName={names.get(task.listId) ?? '未知列表'}
+              subtaskCounts={subtaskCounts}
               onToggle={handlers.onToggle}
               onOpen={handlers.onOpen}
               onMove={handlers.onMove}

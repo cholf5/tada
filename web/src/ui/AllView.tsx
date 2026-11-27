@@ -1,6 +1,7 @@
 import { byOrderKey, liveLists } from '../db/repo';
 import type { TadaDb, ListRow, TaskRow } from '../db/schema';
 import { useLive } from '../hooks/useLive';
+import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { listColor } from '../lib/colors';
 import { EmptyState } from './EmptyState';
 import { TaskRow as TaskItem } from './TaskRow';
@@ -10,16 +11,22 @@ export function AllView({
   db,
   lists,
   handlers,
+  subtaskCounts,
 }: {
   db: TadaDb;
   lists: ListRow[];
   handlers: TaskHandlers;
+  subtaskCounts?: SubtaskCounts;
 }) {
   const tasks =
     useLive(async () => {
       const [currentLists, rows] = await Promise.all([
         liveLists(db),
-        db.tasks.filter((task) => task.deleted === 0 && task.done === 0).toArray(),
+        db.tasks
+          .filter(
+            (task) => task.deleted === 0 && task.done === 0 && task.parentId === null,
+          )
+          .toArray(),
       ]);
       const known = new Set(currentLists.map((list) => list.id));
       return rows.filter((task) => known.has(task.listId)).sort(byOrderKey);
@@ -59,6 +66,7 @@ export function AllView({
                       key={task.id}
                       task={task}
                       lists={lists}
+                      subtaskCounts={subtaskCounts}
                       onToggle={handlers.onToggle}
                       onOpen={handlers.onOpen}
                       onMove={handlers.onMove}

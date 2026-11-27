@@ -5,6 +5,7 @@ import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-ki
 import { byOrderKey, tasksInList } from '../db/repo';
 import type { ListRow, TaskRow } from '../db/schema';
 import { useLive } from '../hooks/useLive';
+import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { LIST_COLORS, listColor } from '../lib/colors';
 import type { AppActions } from '../state/actions';
 import type { TadaDb } from '../db/schema';
@@ -22,6 +23,7 @@ export function ListView({
   lists,
   actions,
   handlers,
+  subtaskCounts,
   onDeleted,
 }: {
   db: TadaDb;
@@ -29,6 +31,7 @@ export function ListView({
   lists: ListRow[];
   actions: AppActions;
   handlers: TaskHandlers;
+  subtaskCounts?: SubtaskCounts;
   onDeleted: () => void;
 }) {
   const tasks = useLive(() => tasksInList(db, list.id, false), [db, list.id]) ?? [];
@@ -160,7 +163,13 @@ export function ListView({
           >
             <ul className="task-list">
               {tasks.map((task) => (
-                <SortableTaskRow key={task.id} task={task} lists={lists} handlers={handlers} />
+                <SortableTaskRow
+                  key={task.id}
+                  task={task}
+                  lists={lists}
+                  handlers={handlers}
+                  subtaskCounts={subtaskCounts}
+                />
               ))}
             </ul>
           </SortableContext>
@@ -179,6 +188,7 @@ export function ListView({
                 key={task.id}
                 task={task}
                 lists={lists}
+                subtaskCounts={subtaskCounts}
                 onToggle={handlers.onToggle}
                 onOpen={handlers.onOpen}
                 onMove={handlers.onMove}

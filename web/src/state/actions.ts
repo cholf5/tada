@@ -12,6 +12,7 @@ export interface AppActions {
   reorderList(id: string, previousKey: string | null, nextKey: string | null): Promise<void>;
 
   createTask(listId: string, title: string, dueAt?: string | null): Promise<string | null>;
+  createSubtask(parentId: string, title: string): Promise<string | null>;
   updateTask(id: string, patch: TaskPatch): Promise<void>;
   setTaskDone(id: string, done: boolean): Promise<void>;
   deleteTask(id: string): Promise<void>;
@@ -37,6 +38,7 @@ export function useActions(deps: RepoDeps, engine: SyncEngine): AppActions {
         notify(repo.reorderList(deps, id, previousKey, nextKey)),
       createTask: (listId, title, dueAt) =>
         notify(repo.createTask(deps, listId, title, { dueAt: dueAt ?? null })),
+      createSubtask: (parentId, title) => notify(repo.createSubtask(deps, parentId, title)),
       updateTask: (id, patch) => notify(repo.updateTask(deps, id, patch)),
       setTaskDone: (id, done) => notify(repo.setTaskDone(deps, id, done)),
       deleteTask: (id) => notify(repo.deleteTask(deps, id)),

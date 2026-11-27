@@ -8,6 +8,7 @@ import {
 import type { DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core';
 import type { ListRow, TaskRow as Row } from '../db/schema';
 import { useToday } from '../hooks/useToday';
+import type { SubtaskCounts } from '../hooks/useSubtaskCounts';
 import { listColor } from '../lib/colors';
 import { formatDue, isOverdue } from '../lib/dates';
 import { Icon } from './icons';
@@ -22,6 +23,10 @@ export interface TaskRowProps {
   lists: ListRow[];
   listName?: string;
   showList?: boolean;
+  /** 搜索命中的子任务：显示所属父任务，补上脱离父任务后缺失的上下文 */
+  parentName?: string;
+  /** 父任务 → 子任务进度映射，用于在任务行显示 `2/5` */
+  subtaskCounts?: SubtaskCounts;
   /** 是否参与拖拽排序（只有未完成列表在主视图里可以拖） */
   draggable?: boolean;
   dragging?: boolean;
@@ -43,6 +48,8 @@ export function TaskRow({
   lists,
   listName,
   showList = false,
+  parentName,
+  subtaskCounts,
   draggable = false,
   dragging = false,
   dragHandleProps,
@@ -71,7 +78,12 @@ export function TaskRow({
   }, [menuOpen]);
 
   const overdue = isOverdue(task.dueAt, today);
-  const moveTargets = lists.filter((list) => list.id !== task.listId);
+  // 子任务跟随父任务换列表，不提供单独移动入口
+  const moveTargets =
+    task.parentId === null ? lists.filter((list) => list.id !== task.listId) : [];
+  const subtaskSummary = subtaskCounts?.get(task.id);
+  const subtasksComplete =
+    subtaskSummary !== undefined && subtaskSummary.done === subtaskSummary.total;
 
   const setRootRef = (node: HTMLLIElement | null) => {
     rootRef.current = node;
@@ -114,7 +126,21 @@ export function TaskRow({
           {task.title}
         </button>
         <div className="task-meta">
+          {parentName ? (
+            <span className="parent-tag" title={`所属父任务：${parentName}`}>
+              ↳ {parentName}
+            </span>
+          ) : null}
           {showList && listName ? <span className="list-tag">{listName}</span> : null}
+          {subtaskSummary && subtaskSummary.total > 0 ? (
+            <span
+              className={`subtask-chip${subtasksComplete ? ' is-complete' : ''}`}
+              title={`子任务 ${subtaskSummary.done}/${subtaskSummary.total} 已完成`}
+            >
+              <Icon name="list" size={12} />
+              {subtaskSummary.done}/{subtaskSummary.total}
+            </span>
+          ) : null}
           {task.dueAt ? (
             <span className={`due-chip${overdue ? ' is-overdue' : ''}`}>
               <Icon name="calendar" size={12} />
