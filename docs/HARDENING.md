@@ -32,7 +32,7 @@
 
 ```bash
 npm run typecheck   # exit 0
-npm run test        # 24 + 61 + 98 = 183 个用例
+npm run test        # 协议、同步引擎、relay SQL 与 HTTP+SQL E2E
 npm run build       # exit 0，生成 manifest / sw.js
 npm audit --omit=dev # 0 vulnerabilities
 ```

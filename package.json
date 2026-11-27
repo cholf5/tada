@@ -1,7 +1,12 @@
 {
   "name": "tada",
+  "description": "单用户、多端同步、本地优先的待办应用",
   "private": true,
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cholf5/tada.git"
+  },
   "type": "module",
   "workspaces": ["shared", "relay", "web"],
   "scripts": {
