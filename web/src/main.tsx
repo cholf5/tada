@@ -5,8 +5,10 @@ import App from './App';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 import './styles.css';
 
-// autoUpdate：新版本在后台装好，下次打开即是新版
-registerSW({ immediate: true });
+// autoUpdate：新版本在后台装好，下次打开即是新版。
+// 本机开发/预览不注册 Service Worker：旧缓存会盖住新构建，刷新也看不到改动。
+const isLocalHost = /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname);
+if (!isLocalHost) registerSW({ immediate: true });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
