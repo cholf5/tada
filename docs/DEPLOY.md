@@ -102,6 +102,8 @@ database_name = "tada"
 database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
+> **只替换 `database_id`，不要动 `binding`。** 新版 wrangler 的 `d1 create` 输出里，绑定名默认是数据库名（`binding = "tada"`），照抄会让 Worker 拿不到数据库：页面能打开，但配对和同步都返回 HTTP 500。代码固定读取 `env.DB`，所以配置里必须保持 `binding = "DB"`。
+
 然后回到仓库根目录：
 
 ```bash
@@ -309,6 +311,7 @@ npx wrangler d1 execute tada --remote --command \
 | 首页 404 或空白 | 没构建，或部署时没上传 assets | 用 `npm run deploy`（它包含 build），看部署输出里有没有 assets |
 | 页面能开，但 API 404 | 请求打到了别的域名或路径 | 单独访问 `/api/health` 确认 |
 | 浏览器控制台报 CORS | 前后端不同源，`APP_ORIGIN` 不匹配 | 同源部署不需要；跨源时把 `APP_ORIGIN` 设为前端来源并重新部署 |
+| 配对返回 HTTP 500，页面本身能打开 | `relay/wrangler.toml` 里的 `binding` 不是 `DB`（多半是照抄了 `d1 create` 输出的 `binding = "tada"`），Worker 里 `env.DB` 为空 | 把 `binding` 改回 `DB`，重新 `npm run deploy`；D1 里的数据不受影响 |
 | 配对提示「无效或过期」 | 码超过 10 分钟、已经用过，或 SQL 没写进远端库 | 重新 `npm run pair`，确认命令带 `--remote`，再填 |
 | 配对后一直 401 | 设备被撤销，或 token 被清掉 | 重新配对 |
 | 主屏还是旧版本 / 旧图标 | Service Worker 缓存或 iOS 启动快照 | 完全关闭再打开；品牌变更需要删除后重新添加到主屏 |
