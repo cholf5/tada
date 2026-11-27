@@ -228,7 +228,7 @@ UI 组件测试不强制。
 # 终端 A
 cd <repo>
 npm run db:init:local -w @tada/relay
-npx wrangler d1 execute tada --local --command \
+npx wrangler d1 execute tada --local --config relay/wrangler.toml --command \
   "INSERT INTO pairing_codes (code, expires_at) VALUES ('AAAA111111', strftime('%Y-%m-%dT%H:%M:%fZ','now','+10 minutes'))"
 npm run dev:relay          # 127.0.0.1:8787
 

@@ -68,11 +68,12 @@ push 响应里的 `lastSeq` **仅信息用途**：它是服务端当前最大的
 
 ## 部署
 
-在仓库根目录：
+完整步骤见 [`docs/DEPLOY.md`](../docs/DEPLOY.md)。这里是最短路径，在仓库根目录：
 
 ```bash
 npx wrangler login
-cd relay && npx wrangler d1 create tada   # 把 database_id 填进 wrangler.toml
+cd relay
+npx wrangler d1 create tada   # 把 database_id 填进 relay/wrangler.toml
 cd ..
 npm run db:init    # 建表
 npm run deploy     # 构建前端 + 部署 Worker
@@ -99,15 +100,17 @@ npm run deploy     # 构建前端 + 部署 Worker
 
 `wrangler.toml` 的 `APP_ORIGIN` 用于跨源请求的 CORS 白名单：
 
-- 前端与 API 同源部署（上面的默认方式）：浏览器不发 CORS 预检，占位值可以保留。
-- 自定义域名，或开发时前端跨源访问 Worker：填实际的前端来源（例如
-  `https://todo.example.com`），否则跨源请求会被浏览器拒绝。
+- 前端与 API 同源部署（上面的默认方式，包括自定义域名由同一个 Worker 托管前端）：
+  浏览器不发 CORS 预检，占位值可以保留。
+- 只有前端在**另一个源**时（例如前端放在 GitHub Pages，或开发时 Vite 跨源访问 Worker）：
+  填实际的前端来源（例如 `https://todo.example.com`），否则跨源请求会被浏览器拒绝。
 
 ## 配对一台设备
 
 ```bash
 npm run pair
-# 输出配对码，以及把它写进远端 D1 的命令；复制执行那条 wrangler 命令
+# 输出配对码，以及把它写进远端 D1 的命令；
+# 复制打印出的命令，在仓库根目录执行（命令里已带 --config relay/wrangler.toml）
 
 curl -X POST https://<你的地址>/api/v1/pair \
   -H 'content-type: application/json' \

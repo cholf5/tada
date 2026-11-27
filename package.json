@@ -17,6 +17,7 @@
     "build": "npm run build -w @tada/web",
     "deploy": "npm run build && npm run deploy -w @tada/relay",
     "db:init": "npm run db:init -w @tada/relay",
+    "db:init:local": "npm run db:init:local -w @tada/relay",
     "pair": "npm run pair -w @tada/relay",
     "icons": "npm run icons -w @tada/web"
   },

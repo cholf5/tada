@@ -61,7 +61,7 @@ web/src/       db/（Dexie、repo、outbox、backup）
                lib/（branding、builtinIcons、iconResize、dates、colors、storage、i18n）
                state/ hooks/
 docs/          SPEC.md（需求来源） HARDENING.md（加固记录 + 真机清单）
-               FIX-ROUND*.md（历史轮次） REVIEW-WEB.md（复核清单）
+               DEPLOY.md（从零部署） FIX-ROUND*.md（历史轮次） REVIEW-WEB.md（复核清单）
 ```
 
 ## 常用命令

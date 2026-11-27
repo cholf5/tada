@@ -46,8 +46,8 @@ npm run dev:web
 要测多端同步，再起一个本地中继：
 
 ```bash
-npm run db:init:local -w @tada/relay   # 本地 D1 建表，只需一次
-npx wrangler d1 execute tada --local --command \
+npm run db:init:local                  # 本地 D1 建表，只需一次
+npx wrangler d1 execute tada --local --config relay/wrangler.toml --command \
   "INSERT INTO pairing_codes (code, expires_at) VALUES ('AAAA111111', strftime('%Y-%m-%dT%H:%M:%fZ','now','+10 minutes'))"
 npm run dev:relay                      # 127.0.0.1:8787
 ```
@@ -92,34 +92,33 @@ web/      @tada/web     React 19 PWA，Dexie + @dnd-kit
 | `npm run typecheck` | 三个 workspace 一起类型检查 |
 | `npm run test` | 协议、同步引擎、relay SQL 与 HTTP+SQL E2E |
 | `npm run build` | 构建前端到 `web/dist` |
-| `npm run deploy` | 构建并部署 Worker |
+| `npm run deploy` | 构建前端并部署 Worker（前端 + API 同源） |
 | `npm run db:init` | 在远端 D1 建表或补表 |
+| `npm run db:init:local` | 在本地 D1 建表（本地联调） |
 | `npm run pair` | 生成一次性配对码，并打印写入 D1 的命令 |
 | `npm run icons` | 从 SVG 重新生成 PWA 图标 |
 
-## 部署中继
+## 部署
 
-首次部署：
+完整步骤见 **[`docs/DEPLOY.md`](docs/DEPLOY.md)**。这里是最短路径：
 
 ```bash
+git clone https://github.com/cholf5/tada.git
+cd tada
+npm install
 npx wrangler login
-cd relay && npx wrangler d1 create tada   # 把 database_id 填进 wrangler.toml
+cd relay
+npx wrangler d1 create tada   # 把 database_id 填进 relay/wrangler.toml
 cd ..
 npm run db:init
 npm run deploy
+npm run pair                  # 执行打印出的 wrangler 命令，然后在设置里填配对码
 ```
 
-- 自定义域名或跨源访问时，在 `relay/wrangler.toml` 里把 `APP_ORIGIN` 填成实际前端来源；同源部署可以保留占位值。
-- 从旧版本升级、缺 `branding` 表时，重跑一次 `npm run db:init`。
-
-配对一台设备：
-
-```bash
-npm run pair
-# 输出配对码，以及把它写进远端 D1 的 wrangler 命令；执行打印出的命令
-```
-
-然后在设备上的「设置 → 中继」填入配对码。token 只保存在客户端，中继只存 SHA-256。撤销方式、分页兜底规则和完整接口契约见 [`relay/README.md`](relay/README.md)。
+- 部署结果是一个 `https://tada-relay.<子域>.workers.dev` 地址：前端、API、PWA manifest 都在上面，自带 HTTPS；不需要 GitHub Pages、服务器或证书。
+- `APP_ORIGIN` 只在前后端不同源时（例如前端放在 GitHub Pages）才需要填；Worker 同源托管时保留占位值即可。
+- 配对码 10 分钟内有效、只能用一次；每台设备单独生成。
+- 升级：`git pull && npm install && npm run db:init && npm run deploy`。
 
 <details>
 <summary>自定义实例名称和图标</summary>
@@ -154,6 +153,7 @@ npm run pair
 
 更多文档：
 
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) —— 从零部署到 Cloudflare Workers 的完整步骤
 - [`docs/SPEC.md`](docs/SPEC.md) —— 产品规格、数据模型、同步规则、验收
 - [`relay/README.md`](relay/README.md) —— 中继接口契约、部署与配对
 - [`docs/HARDENING.md`](docs/HARDENING.md) —— 加固记录与真机验收清单
