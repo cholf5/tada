@@ -48,7 +48,7 @@ npm audit --omit=dev # 0 vulnerabilities
 
 ## 仍未处理
 
-- **部署**：`relay/wrangler.toml` 的 `database_id` 与 `APP_ORIGIN` 仍是占位符（按要求不部署）。
+- **部署**：仓库不含部署配置（`relay/wrangler.toml` 已忽略，模板为 `wrangler.toml.example`）；部署与真机验证由使用者自己完成。
 - **导入恢复**：只提供了导出；从 JSON 恢复需要手工处理，不在 v1 验收内。
 - **真机验证**：触摸长按拖拽、iOS 主屏安装、Safari 上的 30s 请求超时尚未在真实设备上跑过。建议按下面的清单过一遍。
 - **dev-only 告警**：`vite-plugin-pwa` / `workbox-build` / `minimatch` 仍有 4 个 moderate，属于构建期。上游暂无可用修复（审计只建议降级到 1.1.0），未降级。

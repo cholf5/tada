@@ -46,6 +46,7 @@ npm run dev:web
 要测多端同步，再起一个本地中继：
 
 ```bash
+cp relay/wrangler.toml.example relay/wrangler.toml   # 首次
 npm run db:init:local                  # 本地 D1 建表，只需一次
 npx wrangler d1 execute tada --local --config relay/wrangler.toml --command \
   "INSERT INTO pairing_codes (code, expires_at) VALUES ('AAAA111111', strftime('%Y-%m-%dT%H:%M:%fZ','now','+10 minutes'))"
@@ -108,6 +109,7 @@ cd tada
 npm install
 npx wrangler login
 cd relay
+cp wrangler.toml.example wrangler.toml
 npx wrangler d1 create tada   # 把 database_id 填进 relay/wrangler.toml
 cd ..
 npm run db:init

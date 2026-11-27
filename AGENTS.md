@@ -54,7 +54,7 @@ Node ≥ 24（relay 测试直接依赖 `node:sqlite`）。npm workspaces，无 T
 ```
 shared/src/    api.ts（请求/响应类型） schemas.ts（zod） entities.ts hlc.ts limits.ts
 relay/src/     index.ts（路由） store.ts（SQL） pull.ts http.ts branding.ts
-relay/         schema.sql  wrangler.toml
+relay/         schema.sql  wrangler.toml.example（本机 wrangler.toml 不提交）
 web/src/       db/（Dexie、repo、outbox、backup）
                sync/（engine、push、pull、lww、clock、api）
                ui/（Workspace、Sidebar、各视图、TaskDetail、SettingsView、BrandingCard）
@@ -144,7 +144,7 @@ CI（`.github/workflows/ci.yml`）还要跑 `npm audit --omit=dev --audit-level=
 
 ## 当前状态
 
-- 仓库**尚未部署到任何地方**。`relay/wrangler.toml` 里的 `database_id` 和 `APP_ORIGIN` 仍是 `REPLACE_ME` / `YOUR-SUBDOMAIN` 占位符。
+- 部署配置不进仓库：`relay/wrangler.toml` 已加入 `.gitignore`，只提交模板 `relay/wrangler.toml.example`（`database_id` 和 `APP_ORIGIN` 仍是 `REPLACE_ME` / `YOUR-SUBDOMAIN` 占位符）。
 - 功能上 v1 完整；实例品牌是最后加的一块（中继 D1 单行配置 + Worker 动态 manifest/HTML + 设置页卡片）。
 - 真实设备验收还没做：iOS 主屏安装、手机长按拖拽、飞行模式离线，清单在 `docs/HARDENING.md`。
 - 没有发布过版本 tag，也没有 release 页面。

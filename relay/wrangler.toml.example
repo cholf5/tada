@@ -1,3 +1,6 @@
+# 复制成 wrangler.toml 再改：仓库只提交这份模板。
+#   cp wrangler.toml.example wrangler.toml
+# 绑定名必须是 DB：relay 代码固定读取 env.DB。
 name = "tada-relay"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"

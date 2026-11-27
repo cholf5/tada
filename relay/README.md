@@ -73,6 +73,7 @@ push 响应里的 `lastSeq` **仅信息用途**：它是服务端当前最大的
 ```bash
 npx wrangler login
 cd relay
+cp wrangler.toml.example wrangler.toml   # 本机配置，不提交
 npx wrangler d1 create tada   # 把 database_id 填进 relay/wrangler.toml
 cd ..
 npm run db:init    # 建表

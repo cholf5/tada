@@ -1,6 +1,7 @@
 node_modules/
 dist/
 .wrangler/
+relay/wrangler.toml
 .dev.vars
 *.log
 .DS_Store

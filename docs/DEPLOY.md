@@ -79,8 +79,11 @@ npx wrangler whoami
 
 ## 3. 创建 D1 数据库
 
+仓库不提交 `relay/wrangler.toml`（数据库 ID、域名这些属于本机配置），只提交模板 `relay/wrangler.toml.example`。先复制一份：
+
 ```bash
 cd relay
+cp wrangler.toml.example wrangler.toml
 npx wrangler d1 create tada
 ```
 
@@ -326,6 +329,7 @@ npx wrangler d1 execute tada --remote --command \
 
 ```bash
 # 终端 A：仓库根目录
+cp relay/wrangler.toml.example relay/wrangler.toml   # 首次
 npm run db:init:local
 npx wrangler d1 execute tada --local --config relay/wrangler.toml --command \
   "INSERT INTO pairing_codes (code, expires_at) VALUES ('AAAA111111', strftime('%Y-%m-%dT%H:%M:%fZ','now','+10 minutes'))"
@@ -349,6 +353,7 @@ cd tada
 npm install
 npx wrangler login
 cd relay
+cp wrangler.toml.example wrangler.toml
 npx wrangler d1 create tada      # 把 database_id 填进 relay/wrangler.toml
 cd ..
 npm run db:init
