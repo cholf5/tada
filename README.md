@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="web/public/icons/icon-192.png" width="96" alt="Tada 图标">
+  <img src="web/public/icons/icon-192.png" width="96" alt="Tada icon">
 </p>
 
 <h1 align="center">Tada</h1>
 
-<p align="center">单用户、多端同步的待办应用。本地优先：每台设备有自己的本地库，点按立即生效，断网照常使用。</p>
+<p align="center">A single-user to-do app with multi-device sync. Local-first: every device keeps its own local database, taps take effect instantly, and it keeps working offline.</p>
 
 <p align="center">
   <a href="https://github.com/cholf5/tada/actions/workflows/ci.yml"><img src="https://github.com/cholf5/tada/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
@@ -12,96 +12,99 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A5%2024-339933.svg" alt="Node.js 24+">
 </p>
 
+<p align="center">English · <a href="README.zh-CN.md">简体中文</a></p>
+
 > [!IMPORTANT]
-> **本项目只提供源码，不提供托管服务。** 想用请自行部署；一个中继只服务一个人。
+> **This project ships source code only; there is no hosted service.** Deploy it yourself — one relay serves exactly one person.
 
-列表、任务、子任务、今天、全部、搜索，外加一套可选的多端同步。需要别人参与或需要后台推送的东西——协作、共享、提醒、活动流——都被刻意拿掉了。
+Lists, tasks, subtasks, Today, All, and search, plus an optional multi-device sync. Anything that needs another person or a background push — collaboration, sharing, reminders, activity feeds — has been deliberately left out.
 
-## 功能
+## Features
 
-| 功能 | 说明 |
+| Feature | What it does |
 |---|---|
-| **列表** | 新建、改名、改色、拖拽排序、删除 |
-| **任务** | 快速添加、行内改标题、备注、截止日期、完成与恢复、拖拽排序、移动到其他列表 |
-| **子任务** | 在任务详情里添加、勾选、删除，只有一层；父任务显示完成进度 |
-| **视图** | 今天（含逾期）、全部、已完成归档、单个列表 |
-| **搜索** | 跨列表搜索标题和备注，命中的子任务会补上父任务标题 |
-| **同步** | 多端增量同步，离线写入，行级 LWW；未配对时完全单机 |
-| **安装** | PWA，可添加到主屏幕，离线启动，自动更新 |
-| **外观** | 跟随系统自动切换明暗，也可在设置里手动锁定日间或夜间（只影响本机） |
-| **语言** | 中文 / English，默认跟随浏览器语言，也可在设置里手动选择（只影响本机） |
-| **设置** | 配对、设备名、同步状态、立即同步、解除配对、外观、语言、导出备份、重新上传本地数据 |
+| **Lists** | Create, rename, recolor, drag to reorder, delete |
+| **Tasks** | Quick add, inline title editing, notes, due dates, complete and restore, drag to reorder, move to another list |
+| **Subtasks** | Add, check off and delete inside the task detail; one level only; the parent shows completion progress |
+| **Views** | Today (including overdue), All, completed archive, a single list |
+| **Search** | Searches titles and notes across lists; matching subtasks also show their parent's title |
+| **Sync** | Incremental multi-device sync, offline writes, row-level LWW; fully local when unpaired |
+| **Install** | PWA: add to home screen, start offline, update automatically |
+| **Appearance** | Follows the system light/dark setting; can be locked to day or night in settings (per device) |
+| **Language** | Chinese / English, follows the browser by default, can be chosen in settings (per device) |
+| **Settings** | Pairing, device name, sync status, sync now, unpair, appearance, language, export backup, re-upload local data |
 
-## 快速开始
+## Quick start
 
-需要 Node.js ≥ 24（relay 测试直接使用内置的 `node:sqlite`）。前端是纯浏览器环境，装好依赖就能跑。
+Node.js ≥ 24 is required (relay tests use the built-in `node:sqlite`). The frontend is a pure browser environment, so installing dependencies is all it takes.
 
 ```bash
 npm install
 npm run dev:web
 ```
 
-打开 <http://localhost:5173> 即可使用。不启动中继时就是纯本地应用，功能完整。
+Open <http://localhost:5173> and you are set. Without the relay running it is a fully local app with the complete feature set.
 
-要测多端同步，再起一个本地中继：
+To try multi-device sync, start a local relay as well:
 
 ```bash
-cp relay/wrangler.toml.example relay/wrangler.toml   # 首次
-npm run db:init:local                  # 本地 D1 建表，只需一次
+cp relay/wrangler.toml.example relay/wrangler.toml   # first time only
+npm run db:init:local                  # create local D1 tables, once
 npx wrangler d1 execute tada --local --config relay/wrangler.toml --command \
   "INSERT INTO pairing_codes (code, expires_at) VALUES ('AAAA111111', strftime('%Y-%m-%dT%H:%M:%fZ','now','+10 minutes'))"
 npm run dev:relay                      # 127.0.0.1:8787
 ```
 
-然后在「设置 → 中继」里填入配对码 `AAAA111111`。Vite 已经把 `/api` 代理到 8787。
+Then enter the pairing code `AAAA111111` under Settings → Relay. Vite already proxies `/api` to 8787.
 
-## 它是怎么工作的
+## How it works
 
 ```text
-┌─ 浏览器 / PWA ─────────────────────────────┐
-│ React 19 · Vite · Dexie（IndexedDB）       │
-│ 所有读写先落本地，UI 立即响应              │
+┌─ Browser / PWA ────────────────────────────┐
+│ React 19 · Vite · Dexie (IndexedDB)        │
+│ Every read/write hits local storage first  │
+│ and the UI responds immediately            │
 └───────────────┬────────────────────────────┘
-                │ push / pull（可选）
+                │ push / pull (optional)
 ┌───────────────▼────────────────────────────┐
 │ Cloudflare Worker + D1                     │
-│ 配对鉴权 · 行级 LWW · 墓碑删除             │
+│ pairing auth · row-level LWW · tombstones  │
 └────────────────────────────────────────────┘
 ```
 
-- **本地优先**：写行和 `outbox` 在同一个 Dexie 事务里完成，同步是后台行为；网络失败不回滚 UI。
-- **中继可选**：未配对时整条同步链路不存在，应用照常单机工作。
-- **行级 LWW + HLC**：同一行以 HLC 较大者为准，服务端只比较字符串。
-- **墓碑删除**：删除是 `deleted = 1` 加新 HLC，永不物理删除，避免另一端把行复活。
-- **协议只写一遍**：实体类型、zod 校验、HLC 都在 `shared/`，前端和中继各自 import。
-- **同源部署**：Worker 同时托管 `web/dist` 和 API，省掉 CORS；PWA 身份固定为 `/`，不随品牌变化。
+- **Local-first**: the row write and its `outbox` entry happen in a single Dexie transaction; sync runs in the background, and a network failure never rolls back the UI.
+- **Relay optional**: while unpaired the whole sync path does not exist, and the app works standalone as usual.
+- **Row-level LWW + HLC**: for the same row the larger HLC wins; the server only compares strings.
+- **Tombstone deletes**: a delete is `deleted = 1` plus a new HLC and is never a physical delete, so the other device cannot resurrect the row.
+- **Protocol written once**: entity types, zod validation and HLC live in `shared/`, imported by both the frontend and the relay.
+- **Same-origin deploy**: the Worker serves both `web/dist` and the API, which removes CORS; the PWA identity stays `/` and never follows branding.
 
-仓库结构：
+Repository layout:
 
 ```text
-shared/   @tada/shared  实体类型、zod 校验、HLC、API 类型
-relay/    @tada/relay   Cloudflare Worker + D1，手写 SQL
-web/      @tada/web     React 19 PWA，Dexie + @dnd-kit
+shared/   @tada/shared  entity types, zod schemas, HLC, API types
+relay/    @tada/relay   Cloudflare Worker + D1, hand-written SQL
+web/      @tada/web     React 19 PWA, Dexie + @dnd-kit
 ```
 
-## 常用命令
+## Commands
 
-| 命令 | 作用 |
+| Command | What it does |
 |---|---|
-| `npm run dev:web` | Vite 开发服务器（5173） |
-| `npm run dev:relay` | Wrangler 本地中继（8787） |
-| `npm run typecheck` | 三个 workspace 一起类型检查 |
-| `npm run test` | 协议、同步引擎、relay SQL 与 HTTP+SQL E2E |
-| `npm run build` | 构建前端到 `web/dist` |
-| `npm run deploy` | 构建前端并部署 Worker（前端 + API 同源） |
-| `npm run db:init` | 在远端 D1 建表或补表 |
-| `npm run db:init:local` | 在本地 D1 建表（本地联调） |
-| `npm run pair` | 生成一次性配对码，并打印写入 D1 的命令 |
-| `npm run icons` | 从 SVG 重新生成 PWA 图标 |
+| `npm run dev:web` | Vite dev server (5173) |
+| `npm run dev:relay` | Wrangler local relay (8787) |
+| `npm run typecheck` | Typecheck all three workspaces |
+| `npm run test` | Protocol, sync engine, relay SQL and HTTP+SQL E2E |
+| `npm run build` | Build the frontend into `web/dist` |
+| `npm run deploy` | Build the frontend and deploy the Worker (frontend + API, same origin) |
+| `npm run db:init` | Create or patch tables in the remote D1 |
+| `npm run db:init:local` | Create tables in the local D1 (local development) |
+| `npm run pair` | Generate a one-time pairing code and print the command that writes it into D1 |
+| `npm run icons` | Regenerate the PWA icons from SVG |
 
-## 部署
+## Deploy
 
-完整步骤见 **[`docs/DEPLOY.md`](docs/DEPLOY.md)**。这里是最短路径：
+Full steps are in **[`docs/DEPLOY.md`](docs/DEPLOY.md)** (Chinese). Shortest path:
 
 ```bash
 git clone https://github.com/cholf5/tada.git
@@ -110,59 +113,59 @@ npm install
 npx wrangler login
 cd relay
 cp wrangler.toml.example wrangler.toml
-npx wrangler d1 create tada   # 把 database_id 填进 relay/wrangler.toml
+npx wrangler d1 create tada   # put the database_id into relay/wrangler.toml
 cd ..
 npm run db:init
 npm run deploy
-npm run pair                  # 执行打印出的 wrangler 命令，然后在设置里填配对码
+npm run pair                  # run the printed wrangler command, then enter the code in settings
 ```
 
-- 部署结果是一个 `https://tada-relay.<子域>.workers.dev` 地址：前端、API、PWA manifest 都在上面，自带 HTTPS；不需要 GitHub Pages、服务器或证书。
-- `APP_ORIGIN` 只在前后端不同源时（例如前端放在 GitHub Pages）才需要填；Worker 同源托管时保留占位值即可。
-- 配对码 10 分钟内有效、只能用一次；每台设备单独生成。
-- 升级：`git pull && npm install && npm run db:init && npm run deploy`。
+- The result is a `https://tada-relay.<subdomain>.workers.dev` address: frontend, API and PWA manifest all live there, HTTPS included. No GitHub Pages, server or certificate needed.
+- `APP_ORIGIN` only needs a value when the frontend and backend are on different origins (for example the frontend on GitHub Pages); keep the placeholder when the Worker serves both.
+- Pairing codes stay valid for 10 minutes and work once; generate one per device.
+- Upgrade: `git pull && npm install && npm run db:init && npm run deploy`.
 
 <details>
-<summary>自定义实例名称和图标</summary>
+<summary>Custom instance name and icon</summary>
 
-自托管的实例可以换成自己的应用名和图标，所有连接的设备都会看到：
+A self-hosted instance can use its own app name and icon, visible on every connected device:
 
-1. 配对后在「设置 → 实例品牌」里改名称、选内置图标或上传自己的图片。
-2. 上传的图片会先在浏览器里缩成 512×512 PNG 再上传；中继只保存这一张。
-3. 未配对时也可以在 `relay/wrangler.toml` 的 `[vars]` 里设置 `APP_NAME`；设置页保存过之后以 D1 为准，再改 `APP_NAME` 不会覆盖。
-4. 已经添加到主屏幕的 PWA 需要删除后重新添加，名称和图标才会更新；普通网页刷新即可。
-5. 内置图标包括火漆印（默认）、签名火漆、笔记本、纸与丝带、珐琅勾，以及可调色的经典对勾。
+1. After pairing, change the name and pick a built-in icon or upload your own image under Settings → Instance branding.
+2. Uploaded images are resized to a 512×512 PNG in the browser before upload; the relay stores only that one file.
+3. Before pairing you can also set `APP_NAME` under `[vars]` in `relay/wrangler.toml`; once the settings page has saved a value, D1 wins and changing `APP_NAME` no longer overrides it.
+4. A PWA already added to the home screen must be removed and re-added for the new name and icon to appear; an ordinary page refresh is enough elsewhere.
+5. Built-in icons include wax seal (default), signed seal, notebook, paper & ribbon, enamel check, and a recolorable classic check.
 
 </details>
 
-## 数据与备份
+## Data and backups
 
 > [!WARNING]
-> IndexedDB 是本地唯一的一份。清理站点数据、浏览器回收空间或 iOS 长期不用，都可能让它消失。
+> IndexedDB is the only local copy. Clearing site data, browser storage eviction, or leaving an iOS device unused for a long time can all make it disappear.
 
-- 启动时会尝试申请持久化存储，浏览器可以拒绝；设置页能看到当前状态。
-- 「设置 → 本地数据」可以导出 JSON 备份，包含列表和任务（含删除墓碑），不含配对 token；导入恢复尚未实现。
-- 开了同步时中继上还有一份；纯本地使用请定期导出。
+- On startup the app asks for persistent storage; the browser may refuse, and the settings page shows the current status.
+- Settings → Local data can export a JSON backup containing lists and tasks (including tombstones) but no pairing token; import is not implemented yet.
+- With sync enabled, the relay holds another copy; for local-only use, export regularly.
 
-## 测试与 CI
+## Tests and CI
 
-- relay 测试用 Node 内置 `node:sqlite` 执行真实 `schema.sql`；`relay/src/e2e.test.ts` 走完整 HTTP 层：配对、两台客户端 push/pull、LWW、墓碑、分页、401。
-- CI 依次执行 typecheck、test、`npm audit --omit=dev --audit-level=high` 和 build。
+- Relay tests execute the real `schema.sql` through Node's built-in `node:sqlite`; `relay/src/e2e.test.ts` goes through the full HTTP layer: pairing, push/pull from two clients, LWW, tombstones, paging, 401.
+- CI runs typecheck, test, `npm audit --omit=dev --audit-level=high` and build, in that order.
 
-## 边界
+## Out of scope
 
-明确不做：多用户与共享列表、提醒与通知、日历集成、附件、评论、活动流、托管服务。完整范围与已知限制见 [`docs/SPEC.md`](docs/SPEC.md)。
+Deliberately not built: multi-user and shared lists, reminders and notifications, calendar integration, attachments, comments, activity feeds, hosted service. Full scope and known limitations are in [`docs/SPEC.md`](docs/SPEC.md).
 
-更多文档：
+More documentation (written in Chinese):
 
-- [`docs/DEPLOY.md`](docs/DEPLOY.md) —— 从零部署到 Cloudflare Workers 的完整步骤
-- [`docs/SPEC.md`](docs/SPEC.md) —— 产品规格、数据模型、同步规则、验收
-- [`relay/README.md`](relay/README.md) —— 中继接口契约、部署与配对
-- [`docs/HARDENING.md`](docs/HARDENING.md) —— 加固记录与真机验收清单
-- [`AGENTS.md`](AGENTS.md) —— 给协作者的项目约定
+- [`docs/DEPLOY.md`](docs/DEPLOY.md) — complete walkthrough from zero to Cloudflare Workers
+- [`docs/SPEC.md`](docs/SPEC.md) — product spec, data model, sync rules, acceptance
+- [`relay/README.md`](relay/README.md) — relay API contract, deployment and pairing
+- [`docs/HARDENING.md`](docs/HARDENING.md) — hardening log and real-device acceptance checklist
+- [`AGENTS.md`](AGENTS.md) — project conventions for collaborators
 
 ---
 
-Apache-2.0，见 [LICENSE](LICENSE)。名称和图标不在许可证授权范围内；fork 请改名。
+Apache-2.0, see [LICENSE](LICENSE). The name and icons are not covered by the license; forks should rename.
 
-Tada 是一个独立的开源项目，受 Wunderlist 启发，与 Microsoft Corporation 无关联，也未获其背书或赞助。Wunderlist 是 Microsoft Corporation 的商标。
+Tada is an independent open-source project inspired by Wunderlist. It is not affiliated with, endorsed, or sponsored by Microsoft Corporation. Wunderlist is a trademark of Microsoft Corporation.
